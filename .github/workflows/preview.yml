@@ -168,6 +168,11 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Download patched mpvlib AAR
+        run: |
+          mkdir -p app/libs
+          curl -L -o app/libs/mpvlib-patched.aar "https://github.com/dongdat6677-hub/mpvlibAndroid/releases/download/v1-p3-patch/mpvlib.aar"
+
       - name: Build preview APKs
         shell: bash
         run: |
