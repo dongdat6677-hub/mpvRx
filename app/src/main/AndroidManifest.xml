@@ -1323,6 +1323,7 @@
             android:documentLaunchMode="never"
             android:resizeableActivity="true"
             android:supportsPictureInPicture="true"
+            android:colorMode="wideColorGamut"
             android:theme="@style/Theme.mpvrx.Player">
             <!-- MIME-only discovery lets external-player pickers find mpvRx before they
                  attach the final stream URI. URI playback remains constrained below. -->
