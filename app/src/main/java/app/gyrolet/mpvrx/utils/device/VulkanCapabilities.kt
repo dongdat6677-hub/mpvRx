@@ -18,7 +18,7 @@ import app.gyrolet.mpvrx.BuildConfig
 object VulkanCapabilities {
   private const val TAG = "VulkanCapabilities"
   private const val MIN_OPEN_GL_ES_VERSION = 0x00030001
-  private const val MIN_VULKAN_VERSION = 0x00403000
+  private const val MIN_VULKAN_VERSION = 0x00401000
 
   val isBackendIncluded: Boolean
     get() = BuildConfig.MPV_SUPPORTS_VULKAN
