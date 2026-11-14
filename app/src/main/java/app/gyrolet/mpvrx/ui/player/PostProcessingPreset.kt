@@ -35,6 +35,7 @@ enum class PostProcessingPreset(
   Scanlines(R.string.pp_preset_scanlines, R.string.pp_desc_scanlines),
   WhiteBalance(R.string.pp_preset_white_balance, R.string.pp_desc_white_balance),
   Film(R.string.pp_preset_film, R.string.pp_desc_film),
+  RealisticEnhance(R.string.pp_preset_realistic_enhance, R.string.pp_desc_realistic_enhance),
 }
 
 /**
@@ -107,5 +108,12 @@ fun PostProcessingPreset.buildShaders(p: PostProcessingParams): List<String> =
     PostProcessingPreset.Film        -> listOf(
       FilmGrainShaderBuilder.build(p),
       VignetteShaderBuilder.build(p),
+    )
+
+    PostProcessingPreset.RealisticEnhance -> listOf(
+      DebandShaderBuilder.build(p),
+      DenoiseShaderBuilder.build(p),
+      SkinSafeVibranceShaderBuilder.build(p),
+      DetailRecoveryShaderBuilder.build(p),
     )
   }

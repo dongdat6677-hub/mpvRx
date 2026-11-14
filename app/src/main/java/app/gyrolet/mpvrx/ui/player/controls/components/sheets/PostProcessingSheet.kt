@@ -181,6 +181,13 @@ fun PostProcessingSheet(
           FilmGrainSection(params, viewModel::updatePostProcessingParams)
           VignetteSection(params, viewModel::updatePostProcessingParams)
         }
+
+        PostProcessingPreset.RealisticEnhance -> {
+          DebandSection(params, viewModel::updatePostProcessingParams)
+          DenoiseSection(params, viewModel::updatePostProcessingParams)
+          SkinSafeVibranceSection(params, viewModel::updatePostProcessingParams)
+          DetailRecoverySection(params, viewModel::updatePostProcessingParams)
+        }
       }
 
       // ── Reset Defaults Button ────────────────────────────────────────
@@ -423,6 +430,56 @@ private fun DebandSection(
       onChange = { onUpdate(params.copy(debandGrain = it)) },
       min = 0.0f,
       max = 0.02f,
+    )
+  }
+}
+
+@Composable
+private fun SkinSafeVibranceSection(
+  params: PostProcessingParams,
+  onUpdate: (PostProcessingParams) -> Unit,
+) {
+  CollapsibleSection(title = "Skin-Safe Vibrance") {
+    SliderItem(
+      label = "Vibrance",
+      value = params.skinVibrance,
+      valueText = formatVal(params.skinVibrance),
+      onChange = { onUpdate(params.copy(skinVibrance = it)) },
+      min = 1.0f,
+      max = 2.0f,
+    )
+    SliderItem(
+      label = "Skin Protection",
+      value = params.skinProtect,
+      valueText = formatVal(params.skinProtect),
+      onChange = { onUpdate(params.copy(skinProtect = it)) },
+      min = 0.0f,
+      max = 1.0f,
+    )
+  }
+}
+
+@Composable
+private fun DetailRecoverySection(
+  params: PostProcessingParams,
+  onUpdate: (PostProcessingParams) -> Unit,
+) {
+  CollapsibleSection(title = "Detail Recovery") {
+    SliderItem(
+      label = "Amount",
+      value = params.detailRecoveryAmount,
+      valueText = formatVal(params.detailRecoveryAmount),
+      onChange = { onUpdate(params.copy(detailRecoveryAmount = it)) },
+      min = 0.0f,
+      max = 1.0f,
+    )
+    SliderItem(
+      label = "Radius",
+      value = params.detailRecoveryRadius,
+      valueText = formatVal(params.detailRecoveryRadius),
+      onChange = { onUpdate(params.copy(detailRecoveryRadius = it)) },
+      min = 0.5f,
+      max = 2.0f,
     )
   }
 }

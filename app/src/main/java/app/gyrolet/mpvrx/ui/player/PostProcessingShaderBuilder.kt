@@ -126,6 +126,12 @@ data class PostProcessingParams(
   val crtDensity: Float = 272.0f,
   val crtRollSpeed: Float = 1.0f,
   val crtBleed: Float = 1.0f,
+  // SkinSafeVibrance
+  val skinVibrance: Float = 1.35f,
+  val skinProtect: Float = 0.75f,
+  // DetailRecovery
+  val detailRecoveryAmount: Float = 0.35f,
+  val detailRecoveryRadius: Float = 1.0f,
 )
 
 // ── Shader Builders ───────────────────────────────────────────────────────────
@@ -662,6 +668,97 @@ vec4 hook() {
     vec3 lms = rgb2lms * rgb * balance;
     rgb = lms2rgb * lms;
     return vec4(clamp(pow(max(rgb, 0.0), vec3(1.0/2.2)), 0.0, 1.0), 1.0);
+}
+  """.trimIndent()
+}
+
+/**
+ * Skin-tone-safe vibrance. Boosts saturation like a standard "vibrance" control
+ * (muted colours get lifted more than already-saturated ones, to avoid clipping),
+ * but the boost is reduced inside the hue/saturation band typical of skin tones so
+ * faces don't shift towards orange or lose their natural look while everything
+ * else (sky, foliage, clothing) gets more vivid.
+ */
+object SkinSafeVibranceShaderBuilder {
+  fun build(p: PostProcessingParams): String = """
+//!HOOK MAIN
+//!BIND HOOKED
+//!DESC Skin-Safe Vibrance (mpvRx)
+
+#define PP_VIBRANCE     ${f(p.skinVibrance)}
+#define PP_SKIN_PROTECT ${f(p.skinProtect)}
+
+vec3 rgb2hsv(vec3 c) {
+    vec4 k = vec4(0.0, -1.0 / 3.0, 2.0 / 3.0, -1.0);
+    vec4 pp = mix(vec4(c.bg, k.wz), vec4(c.gb, k.xy), step(c.b, c.g));
+    vec4 q = mix(vec4(pp.xyw, c.r), vec4(c.r, pp.yzx), step(pp.x, c.r));
+    float d = q.x - min(q.w, q.y);
+    float e = 1.0e-10;
+    return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
+}
+
+vec4 hook() {
+    vec3 rgb = HOOKED_tex(HOOKED_pos).rgb;
+    vec3 hsv = rgb2hsv(rgb);
+
+    // Skin tones sit in a narrow red/orange hue band with moderate saturation.
+    float hueDist = min(abs(hsv.x - 0.055), 1.0 - abs(hsv.x - 0.055));
+    float skinHue = 1.0 - smoothstep(0.0, 0.09, hueDist);
+    float skinSat = smoothstep(0.12, 0.32, hsv.y) * (1.0 - smoothstep(0.55, 0.85, hsv.y));
+    float skinMask = skinHue * skinSat;
+
+    float maxc = max(rgb.r, max(rgb.g, rgb.b));
+    float minc = min(rgb.r, min(rgb.g, rgb.b));
+    float sat = maxc - minc;
+
+    float boost = (PP_VIBRANCE - 1.0) * (1.0 - sat);
+    boost *= 1.0 - skinMask * PP_SKIN_PROTECT;
+
+    float gray = dot(rgb, vec3(0.299, 0.587, 0.114));
+    vec3 result = mix(vec3(gray), rgb, 1.0 + boost);
+    return vec4(clamp(result, 0.0, 1.0), 1.0);
+}
+  """.trimIndent()
+}
+
+/**
+ * Contrast-adaptive detail recovery. Looks at the 4-neighbour cross around each
+ * pixel, measures local contrast (min/max range), and sharpens low-contrast /
+ * low-detail regions — typical of heavily compressed or upscaled low-resolution
+ * sources — more than it sharpens already well-defined edges. The result is
+ * clamped to the local min/max so it cannot ring or create halos the way a
+ * plain unsharp mask can; this makes it safe to push harder than [SharpenShaderBuilder]
+ * when trying to simulate extra detail on 720p-and-below content.
+ */
+object DetailRecoveryShaderBuilder {
+  fun build(p: PostProcessingParams): String = """
+//!HOOK MAIN
+//!BIND HOOKED
+//!DESC Detail Recovery (mpvRx)
+
+#define PP_AMOUNT ${f(p.detailRecoveryAmount)}
+#define PP_RADIUS ${f(p.detailRecoveryRadius)}
+
+vec4 hook() {
+    vec2 texel = (1.0 / HOOKED_size) * PP_RADIUS;
+    vec3 c = HOOKED_tex(HOOKED_pos).rgb;
+    vec3 n = HOOKED_tex(HOOKED_pos + vec2(0.0, -texel.y)).rgb;
+    vec3 s = HOOKED_tex(HOOKED_pos + vec2(0.0,  texel.y)).rgb;
+    vec3 w = HOOKED_tex(HOOKED_pos + vec2(-texel.x, 0.0)).rgb;
+    vec3 e = HOOKED_tex(HOOKED_pos + vec2( texel.x, 0.0)).rgb;
+
+    vec3 mn = min(c, min(min(n, s), min(w, e)));
+    vec3 mx = max(c, max(max(n, s), max(w, e)));
+    vec3 range = max(mx - mn, 0.0001);
+
+    // Low local contrast (flat/blurry areas) -> larger weight; already-sharp
+    // edges -> smaller weight, so we don't over-sharpen edges that are fine.
+    vec3 weight = clamp(PP_AMOUNT * (1.0 - range) / range, 0.0, PP_AMOUNT * 4.0);
+
+    vec3 sum = n + s + w + e;
+    vec3 sharpened = c * (1.0 + 4.0 * weight) - sum * weight;
+    sharpened = clamp(sharpened, mn, mx);
+    return vec4(clamp(sharpened, 0.0, 1.0), 1.0);
 }
   """.trimIndent()
 }
