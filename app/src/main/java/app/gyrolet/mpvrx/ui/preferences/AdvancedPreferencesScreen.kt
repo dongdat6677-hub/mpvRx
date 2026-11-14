@@ -106,6 +106,7 @@ private enum class AppLanguage(
   Russian("ru"),
   SimplifiedChinese("zh-CN"),
   Ukrainian("uk"),
+  Vietnamese("vi"),
   ;
 
   fun displayName(context: android.content.Context): String {
