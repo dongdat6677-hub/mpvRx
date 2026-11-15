@@ -672,6 +672,9 @@ class PlayerActivity :
     startForResultOrToast(intent, requestCode) { target -> super.startActivityForResult(target, requestCode, options) }
 
   override fun onCreate(savedInstanceState: Bundle?) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      window.colorMode = ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
+    }
     // A fresh launch drops the rotation picked for the previous session; re-entry keeps it.
     if (savedInstanceState == null && intent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) {
       PlayerOrientationPolicy.manualOrientation = null
