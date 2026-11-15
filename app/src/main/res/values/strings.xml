@@ -2521,6 +2521,7 @@
   <string name="pp_preset_scanlines">Scanlines</string>
   <string name="pp_preset_white_balance">White Balance</string>
   <string name="pp_preset_film">Film</string>
+  <string name="pp_preset_realistic_enhance">Realistic Enhance</string>
   <string name="pp_desc_none">No post-processing shaders active.</string>
   <string name="pp_desc_natural">Warm YIQ colour boost from PPSSPP.</string>
   <string name="pp_desc_vivid">Saturated and levelled colours.</string>
@@ -2535,6 +2536,7 @@
   <string name="pp_desc_scanlines">CRT horizontal scanline overlay.</string>
   <string name="pp_desc_white_balance">Chromatic temperature correction.</string>
   <string name="pp_desc_film">Film grain and corner vignette.</string>
+  <string name="pp_desc_realistic_enhance">Fixes banding/blocking, reduces noise, lifts vividness while protecting skin tones, and recovers perceived detail on low-resolution sources. Tuned for weaker GPUs.</string>
   <string name="pp_on">Post-processing on</string>
   <string name="pp_off">Post-processing off</string>
   <string name="oss_kmp_vibrate_description">Haptic feedback library by WonDDak (jmseb3).</string>
