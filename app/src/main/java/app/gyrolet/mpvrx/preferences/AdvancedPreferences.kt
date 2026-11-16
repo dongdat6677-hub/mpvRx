@@ -40,9 +40,6 @@ class AdvancedPreferences(
 
   val autoBackupEnabled = preferenceStore.getBoolean(AUTO_BACKUP_ENABLED_KEY, false)
 
-  /** This is deliberately false for every fresh install; only a user can grant consent. */
-  val measureEnabled = preferenceStore.getBoolean(MEASURE_ENABLED_KEY, false)
-
   val enabledStatisticsPage = preferenceStore.getInt("enabled_stats_page", 0)
 
   val enableRecentlyPlayed = preferenceStore.getBoolean("enable_recently_played", true)
