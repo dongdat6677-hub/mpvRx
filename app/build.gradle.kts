@@ -66,21 +66,10 @@ plugins {
   alias(libs.plugins.ksp)
   alias(libs.plugins.room)
   alias(libs.plugins.ktlint)
-  id("sh.measure.android.gradle") version "0.14.0" apply false
-}
-
-// Supply the ingestion key through a local Gradle property or the CI secret.
-val measureApiKey =
-  providers.gradleProperty("measureApiKey").orElse(providers.environmentVariable("MEASURE_API_KEY")).getOrElse("")
-if (measureApiKey.isNotBlank()) {
-  apply(plugin = "sh.measure.android.gradle")
 }
 
 androidComponents {
   onVariants(selector().all()) { variant ->
-    // Measure 0.14 only rewrites OkHttp through 5.3.2. Attach its public SDK hooks
-    // to our clients instead, preserving OkHttp 5.5 and avoiding duplicate instrumentation.
-    variant.instrumentation.excludes.add("okhttp3/OkHttpClient")
     variant.instrumentation.transformClassesWith(
       SmbRpcExceptionCompatibility::class.java,
       InstrumentationScope.ALL,
@@ -94,8 +83,6 @@ android {
   ndkVersion = "27.3.13750724"
 
   defaultConfig {
-    manifestPlaceholders["measureApiKey"] = measureApiKey
-    buildConfigField("boolean", "MEASURE_CONFIGURED", measureApiKey.isNotBlank().toString())
     applicationId = "app.gyrolet.mpvrx"
     minSdk = 26
     targetSdk = 36
