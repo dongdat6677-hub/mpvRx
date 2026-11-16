@@ -371,7 +371,6 @@ configurations.configureEach {
 }
 
 dependencies {
-  implementation("sh.measure:measure-android:0.22.0")
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.ext.junit)
   implementation(libs.androidx.activity.compose)
