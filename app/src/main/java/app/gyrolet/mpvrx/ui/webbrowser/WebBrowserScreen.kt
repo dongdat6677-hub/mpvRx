@@ -155,7 +155,7 @@ object WebBrowserScreen : Screen {
                 ViewGroup.LayoutParams.MATCH_PARENT,
               )
             // Rules out a dark-themed empty WebView rendering as solid black before any page loads.
-            setBackgroundColor(android.graphics.Color.WHITE)
+            setBackgroundColor(android.graphics.Color.BLACK)
             setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
@@ -166,7 +166,9 @@ object WebBrowserScreen : Screen {
                   request: WebResourceRequest,
                 ): WebResourceResponse? {
                   val requestUrl = request.url.toString()
-                  return if (viewModel.adBlockRuleSet.shouldBlock(requestUrl, view.url)) {
+                  // view.url must not be read here: shouldInterceptRequest runs off the main
+                  // thread, and WebView.getUrl() is main-thread-only (this is what crashed).
+                  return if (viewModel.adBlockRuleSet.shouldBlock(requestUrl, null)) {
                     WebResourceResponse(
                       "text/plain",
                       "utf-8",
