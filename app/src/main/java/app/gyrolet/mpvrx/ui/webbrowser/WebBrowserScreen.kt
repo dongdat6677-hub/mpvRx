@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -90,7 +91,13 @@ object WebBrowserScreen : Screen {
       val webView = webViewRef
       if (webView != null && canGoBack) webView.goBack() else backStack.popSafely()
     }
-
+    
+    LaunchedEffect(webViewRef) {
+      if (webViewRef != null && viewModel.pageUrl.value == null) {
+        loadUrl("https://www.google.com")
+      }
+    }
+    
     Column(modifier = Modifier.fillMaxSize()) {
       TopAppBar(
         title = { Text(stringResource(R.string.ui_web_browser)) },
@@ -156,7 +163,6 @@ object WebBrowserScreen : Screen {
               )
             // Rules out a dark-themed empty WebView rendering as solid black before any page loads.
             setBackgroundColor(android.graphics.Color.BLACK)
-            setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient =
