@@ -146,7 +146,7 @@ object WebBrowserScreen : Screen {
       }
 
       AndroidView(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.weight(1f).fillMaxWidth(),
         factory = { ctx ->
           WebView(ctx).apply {
             layoutParams =
@@ -154,6 +154,8 @@ object WebBrowserScreen : Screen {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
               )
+            // Rules out a dark-themed empty WebView rendering as solid black before any page loads.
+            setBackgroundColor(android.graphics.Color.WHITE)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient =
