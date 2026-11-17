@@ -1,0 +1,34 @@
+! mpvRx bundled ad/tracker block list — Phase 1 starter set.
+! Format: one network rule per line, "||domain^" blocks that domain and
+! all its subdomains. Comment lines start with "!". This is a small,
+! hand-picked subset (common ad/analytics/tracking domains, including a
+! few seen on streaming/anime sites) — it can be replaced or extended with
+! a full EasyList and/or ABPVN snapshot later, in this same per-line
+! format, with no code change required.
+||doubleclick.net^
+||googlesyndication.com^
+||googletagmanager.com^
+||google-analytics.com^
+||googletagservices.com^
+||googleadservices.com^
+||adsafeprotected.com^
+||adnxs.com^
+||adsrvr.org^
+||taboola.com^
+||outbrain.com^
+||criteo.com^
+||pubmatic.com^
+||rubiconproject.com^
+||scorecardresearch.com^
+||moatads.com^
+||adform.net^
+||bidswitch.net^
+||casalemedia.com^
+||openx.net^
+||smartadserver.com^
+||media.net^
+||mgid.com^
+||propellerads.com^
+||popads.net^
+||exoclick.com^
+||juicyads.com^
