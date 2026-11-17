@@ -925,6 +925,21 @@ object FolderListScreen : Screen {
                   )
                 },
               )
+              
+              FloatingActionButtonMenuItem(
+                onClick = {
+                  isFabExpanded.value = false
+                  backstack.navigateTo(app.gyrolet.mpvrx.ui.webbrowser.WebBrowserScreen)
+                },
+                icon = { Icon(Icons.RoundedFilled.Language, contentDescription = null) },
+                text = {
+                  Text(
+                    text =
+                      androidx.compose.ui.res
+                        .stringResource(app.gyrolet.mpvrx.R.string.ui_web_browser),
+                  )
+                },
+              )
             }
           }
         },
