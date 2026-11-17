@@ -371,6 +371,7 @@ configurations.configureEach {
 }
 
 dependencies {
+  testImplementation("junit:junit:4.13.2")
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.ext.junit)
   implementation(libs.androidx.activity.compose)
