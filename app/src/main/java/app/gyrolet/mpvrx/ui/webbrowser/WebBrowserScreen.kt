@@ -10,7 +10,9 @@ package app.gyrolet.mpvrx.ui.webbrowser
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
+import android.os.Message
 import android.view.ViewGroup
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -56,6 +58,7 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import java.io.ByteArrayInputStream
+import java.net.URI
 import kotlinx.serialization.Serializable
 import org.koin.java.KoinJavaComponent.inject
 
@@ -97,15 +100,23 @@ object WebBrowserScreen : Screen {
     val currentPageUrl by viewModel.pageUrl
     val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }
       .collectAsState(initial = false)
+    val pendingNavigation by viewModel.pendingNavigationConfirmation
 
     val preferences by inject<WebBrowserPreferences>(WebBrowserPreferences::class.java)
     val blockAds by preferences.blockAds.collectAsState()
     val blockTrackers by preferences.blockTrackers.collectAsState()
+    val blockPopups by preferences.blockPopups.collectAsState()
+    val blockRedirects by preferences.blockRedirects.collectAsState()
+
     val adBlockRuleSetState =
       remember { mutableStateOf(viewModel.buildAdBlockRuleSet(blockAds, blockTrackers)) }
+    val blockPopupsState = remember { mutableStateOf(blockPopups) }
+    val blockRedirectsState = remember { mutableStateOf(blockRedirects) }
     LaunchedEffect(blockAds, blockTrackers) {
       adBlockRuleSetState.value = viewModel.buildAdBlockRuleSet(blockAds, blockTrackers)
     }
+    LaunchedEffect(blockPopups) { blockPopupsState.value = blockPopups }
+    LaunchedEffect(blockRedirects) { blockRedirectsState.value = blockRedirects }
 
     DisposableEffect(Unit) {
       onDispose {
@@ -221,6 +232,8 @@ object WebBrowserScreen : Screen {
             setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.javaScriptCanOpenWindowsAutomatically = true
+            settings.setSupportMultipleWindows(true)
             webViewClient =
               object : WebViewClient() {
                 override fun shouldInterceptRequest(
@@ -240,6 +253,20 @@ object WebBrowserScreen : Screen {
                   } else {
                     null
                   }
+                }
+
+                override fun shouldOverrideUrlLoading(
+                  view: WebView,
+                  request: WebResourceRequest,
+                ): Boolean {
+                  if (!blockRedirectsState.value || request.hasGesture()) return false
+                  val currentHost = runCatching { URI(viewModel.pageUrl.value).host }.getOrNull()
+                  val targetHost = runCatching { URI(request.url.toString()).host }.getOrNull()
+                  if (targetHost != null && targetHost != currentHost) {
+                    viewModel.requestNavigationConfirmation(request.url.toString(), view.title)
+                    return true
+                  }
+                  return false
                 }
 
                 override fun onPageStarted(view: WebView, pageUrl: String?, favicon: Bitmap?) {
@@ -274,12 +301,50 @@ object WebBrowserScreen : Screen {
                   }
                 }
               }
+            webChromeClient =
+              object : WebChromeClient() {
+                override fun onCreateWindow(
+                  view: WebView,
+                  isDialog: Boolean,
+                  isUserGesture: Boolean,
+                  resultMsg: Message,
+                ): Boolean {
+                  if (!blockPopupsState.value) return false
+                  val tempWebView = WebView(ctx)
+                  tempWebView.webViewClient =
+                    object : WebViewClient() {
+                      override fun shouldOverrideUrlLoading(
+                        v: WebView,
+                        request: WebResourceRequest,
+                      ): Boolean {
+                        viewModel.requestNavigationConfirmation(request.url.toString(), view.title)
+                        tempWebView.destroy()
+                        return true
+                      }
+                    }
+                  val transport = resultMsg.obj as WebView.WebViewTransport
+                  transport.webView = tempWebView
+                  resultMsg.sendToTarget()
+                  return true
+                }
+              }
             loadUrl("https://www.google.com")
             post { setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null) }
             webViewRef = this
           }
         },
       )
+
+      pendingNavigation?.let { pending ->
+        BrowserConfirmNavigationDialog(
+          pending = pending,
+          onAllow = {
+            webViewRef?.loadUrl(pending.url)
+            viewModel.confirmNavigation()
+          },
+          onDeny = { viewModel.confirmNavigation() },
+        )
+      }
     }
   }
 }
