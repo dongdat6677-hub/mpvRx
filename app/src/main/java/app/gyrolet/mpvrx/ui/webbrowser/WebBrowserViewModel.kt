@@ -10,7 +10,9 @@ package app.gyrolet.mpvrx.ui.webbrowser
 
 import android.content.Context
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
 import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserBookmarkRepository
 import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserHistoryRepository
@@ -24,19 +26,34 @@ import org.koin.java.KoinJavaComponent.inject
 data class PendingNavigation(val url: String, val pageTitle: String?)
 
 internal class WebBrowserViewModel(private val context: Context) {
-  val url: MutableState<String> = mutableStateOf("")
-  val pageUrl: MutableState<String?> = mutableStateOf(null)
-  val isLoading: MutableState<Boolean> = mutableStateOf(false)
-  val canGoBack: MutableState<Boolean> = mutableStateOf(false)
-  val canGoForward: MutableState<Boolean> = mutableStateOf(false)
-  val loadError: MutableState<String?> = mutableStateOf(null)
-  val pendingHttpFallbackUrl: MutableState<String?> = mutableStateOf(null)
+  val tabs: SnapshotStateList<BrowserTabState> = mutableStateListOf(BrowserTabState())
+  val activeTabId: MutableState<String> = mutableStateOf(tabs.first().id)
+
   val pendingNavigationConfirmation: MutableState<PendingNavigation?> = mutableStateOf(null)
 
   private val historyRepository by inject<BrowserHistoryRepository>(BrowserHistoryRepository::class.java)
   private val bookmarkRepository by inject<BrowserBookmarkRepository>(BrowserBookmarkRepository::class.java)
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
   private val alreadyPromptedUrls = mutableSetOf<String>()
+
+  fun addTab() {
+    val tab = BrowserTabState()
+    tabs.add(tab)
+    activeTabId.value = tab.id
+  }
+
+  /** Never leaves [tabs] empty: closing the last tab opens a fresh default one. */
+  fun closeTab(id: String) {
+    val index = tabs.indexOfFirst { it.id == id }
+    if (index == -1) return
+    tabs[index].webView?.destroy()
+    tabs.removeAt(index)
+    if (tabs.isEmpty()) tabs.add(BrowserTabState())
+    if (activeTabId.value == id) {
+      val newIndex = (index - 1).coerceIn(0, tabs.lastIndex)
+      activeTabId.value = tabs[newIndex].id
+    }
+  }
 
   fun recordVisit(url: String, title: String?) {
     scope.launch { historyRepository.recordVisit(url, title) }
