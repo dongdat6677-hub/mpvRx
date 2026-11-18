@@ -94,7 +94,7 @@ object WebBrowserScreen : Screen {
     
     LaunchedEffect(webViewRef) {
       if (webViewRef != null && viewModel.pageUrl.value == null) {
-        loadUrl("https://www.google.com")
+        loadUrl("https://searx.tiekoetter.com/search?q=%s&safesearch=0")
       }
     }
     
@@ -163,6 +163,7 @@ object WebBrowserScreen : Screen {
               )
             // Rules out a dark-themed empty WebView rendering as solid black before any page loads.
             setBackgroundColor(android.graphics.Color.BLACK)
+            setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient =
@@ -213,6 +214,7 @@ object WebBrowserScreen : Screen {
                   }
                 }
               }
+            loadUrl("https://searx.tiekoetter.com/search?q=%s&safesearch=0")
             webViewRef = this
           }
         },
