@@ -48,14 +48,25 @@ internal class WebBrowserViewModel(context: Context) {
     scope.launch { bookmarkRepository.toggle(url, title) }
   }
 
-  /** Loaded once, lazily, from the bundled starter list (see easylist-lite.txt). */
-  val adBlockRuleSet: AdBlockRuleSet by lazy {
-    context.assets.open(AD_BLOCK_ASSET_PATH).bufferedReader().use { reader ->
-      AdBlockRuleSet.parse(reader.lineSequence())
+  val pendingHttpFallbackUrl: MutableState<String?> = mutableStateOf(null)
+
+  fun clearHistoryRepository() {
+    scope.launch { historyRepository.clearAll() }
+  }
+
+  fun buildAdBlockRuleSet(blockAds: Boolean, blockTrackers: Boolean): AdBlockRuleSet {
+  val lines = mutableListOf<String>()
+    if (blockAds) {
+      context.assets.open(AD_BLOCK_ASSET_PATH).bufferedReader().use { lines += it.readLines() }
     }
+    if (blockTrackers) {
+      context.assets.open(TRACKER_BLOCK_ASSET_PATH).bufferedReader().use { lines += it.readLines() }
+    }
+    return AdBlockRuleSet.parse(lines.asSequence())
   }
 
   private companion object {
     const val AD_BLOCK_ASSET_PATH = "adblock/easylist-lite.txt"
+    const val TRACKER_BLOCK_ASSET_PATH = "adblock/easyprivacy-lite.txt"
   }
 }
