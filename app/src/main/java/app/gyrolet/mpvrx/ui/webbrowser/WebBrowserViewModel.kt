@@ -21,18 +21,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 
-/**
- * Holds the in-app web browser's UI state and the ad-block rule set it
- * consults for every request. Created once per [WebBrowserScreen] visit
- * via `remember`.
- */
-internal class WebBrowserViewModel(context: Context) {
+internal class WebBrowserViewModel(private val context: Context) {
   val url: MutableState<String> = mutableStateOf("")
   val pageUrl: MutableState<String?> = mutableStateOf(null)
   val isLoading: MutableState<Boolean> = mutableStateOf(false)
   val canGoBack: MutableState<Boolean> = mutableStateOf(false)
   val canGoForward: MutableState<Boolean> = mutableStateOf(false)
   val loadError: MutableState<String?> = mutableStateOf(null)
+  val pendingHttpFallbackUrl: MutableState<String?> = mutableStateOf(null)
 
   private val historyRepository by inject<BrowserHistoryRepository>(BrowserHistoryRepository::class.java)
   private val bookmarkRepository by inject<BrowserBookmarkRepository>(BrowserBookmarkRepository::class.java)
@@ -48,14 +44,12 @@ internal class WebBrowserViewModel(context: Context) {
     scope.launch { bookmarkRepository.toggle(url, title) }
   }
 
-  val pendingHttpFallbackUrl: MutableState<String?> = mutableStateOf(null)
-
   fun clearHistoryRepository() {
     scope.launch { historyRepository.clearAll() }
   }
 
   fun buildAdBlockRuleSet(blockAds: Boolean, blockTrackers: Boolean): AdBlockRuleSet {
-  val lines = mutableListOf<String>()
+    val lines = mutableListOf<String>()
     if (blockAds) {
       context.assets.open(AD_BLOCK_ASSET_PATH).bufferedReader().use { lines += it.readLines() }
     }
