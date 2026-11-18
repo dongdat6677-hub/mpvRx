@@ -12,14 +12,14 @@ import android.content.Context
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
+import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserBookmarkRepository
 import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserHistoryRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
-import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserBookmarkRepository
-import kotlinx.coroutines.flow.Flow
 
 /**
  * Holds the in-app web browser's UI state and the ad-block rule set it
@@ -38,15 +38,14 @@ internal class WebBrowserViewModel(context: Context) {
   private val bookmarkRepository by inject<BrowserBookmarkRepository>(BrowserBookmarkRepository::class.java)
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-  fun recordVisit(url: String, title: String?)
+  fun recordVisit(url: String, title: String?) {
+    scope.launch { historyRepository.recordVisit(url, title) }
+  }
 
   fun isBookmarked(url: String): Flow<Boolean> = bookmarkRepository.isBookmarked(url)
 
   fun toggleBookmark(url: String, title: String?) {
     scope.launch { bookmarkRepository.toggle(url, title) }
-  }
-  {
-    scope.launch { historyRepository.recordVisit(url, title) }
   }
 
   /** Loaded once, lazily, from the bundled starter list (see easylist-lite.txt). */
