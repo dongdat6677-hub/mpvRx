@@ -28,6 +28,7 @@ import app.gyrolet.mpvrx.preferences.SubtitlesPreferences
 import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.preferences.preference.AndroidPreferenceStore
 import app.gyrolet.mpvrx.preferences.preference.PreferenceStore
+import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -45,6 +46,7 @@ val PreferencesModule =
     singleOf(::AudioPreferences)
     singleOf(::AdvancedPreferences)
     single { BrowserPreferences(get(), androidContext()) }
+    singleOf(::WebBrowserPreferences)
     singleOf(::FoldersPreferences)
     singleOf(::NetworkBookmarkPreferences)
     singleOf(::AiPreferences)
