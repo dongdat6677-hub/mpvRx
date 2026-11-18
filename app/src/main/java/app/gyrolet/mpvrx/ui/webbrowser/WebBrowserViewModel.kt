@@ -12,6 +12,12 @@ import android.content.Context
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
+import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserHistoryRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.koin.java.KoinJavaComponent.inject
 
 /**
  * Holds the in-app web browser's UI state and the ad-block rule set it
@@ -25,6 +31,13 @@ internal class WebBrowserViewModel(context: Context) {
   val canGoBack: MutableState<Boolean> = mutableStateOf(false)
   val canGoForward: MutableState<Boolean> = mutableStateOf(false)
   val loadError: MutableState<String?> = mutableStateOf(null)
+
+  private val historyRepository by inject<BrowserHistoryRepository>(BrowserHistoryRepository::class.java)
+  private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+  fun recordVisit(url: String, title: String?) {
+    scope.launch { historyRepository.value.recordVisit(url, title) }
+  }
 
   /** Loaded once, lazily, from the bundled starter list (see easylist-lite.txt). */
   val adBlockRuleSet: AdBlockRuleSet by lazy {
