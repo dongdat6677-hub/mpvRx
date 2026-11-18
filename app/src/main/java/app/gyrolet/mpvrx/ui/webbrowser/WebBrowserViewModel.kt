@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
 
+data class PendingNavigation(val url: String, val pageTitle: String?)
+
 internal class WebBrowserViewModel(private val context: Context) {
   val url: MutableState<String> = mutableStateOf("")
   val pageUrl: MutableState<String?> = mutableStateOf(null)
@@ -29,10 +31,12 @@ internal class WebBrowserViewModel(private val context: Context) {
   val canGoForward: MutableState<Boolean> = mutableStateOf(false)
   val loadError: MutableState<String?> = mutableStateOf(null)
   val pendingHttpFallbackUrl: MutableState<String?> = mutableStateOf(null)
+  val pendingNavigationConfirmation: MutableState<PendingNavigation?> = mutableStateOf(null)
 
   private val historyRepository by inject<BrowserHistoryRepository>(BrowserHistoryRepository::class.java)
   private val bookmarkRepository by inject<BrowserBookmarkRepository>(BrowserBookmarkRepository::class.java)
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+  private val alreadyPromptedUrls = mutableSetOf<String>()
 
   fun recordVisit(url: String, title: String?) {
     scope.launch { historyRepository.recordVisit(url, title) }
@@ -46,6 +50,18 @@ internal class WebBrowserViewModel(private val context: Context) {
 
   fun clearHistoryRepository() {
     scope.launch { historyRepository.clearAll() }
+  }
+
+  /** Returns false (no dialog shown) when this exact destination was already asked about. */
+  fun requestNavigationConfirmation(url: String, pageTitle: String?): Boolean {
+    if (url in alreadyPromptedUrls) return false
+    alreadyPromptedUrls += url
+    pendingNavigationConfirmation.value = PendingNavigation(url, pageTitle)
+    return true
+  }
+
+  fun confirmNavigation() {
+    pendingNavigationConfirmation.value = null
   }
 
   fun buildAdBlockRuleSet(blockAds: Boolean, blockTrackers: Boolean): AdBlockRuleSet {
