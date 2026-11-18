@@ -28,6 +28,7 @@ import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import kotlinx.serialization.Serializable
 import org.koin.java.KoinJavaComponent.inject
 
