@@ -1705,6 +1705,8 @@
   <string name="ui_web_browser_url_hint">Enter a web address or search</string>
   <string name="ui_web_browser_history">History</string>
   <string name="ui_web_browser_history_empty">No browsing history yet</string>
+  <string name="ui_web_browser_bookmarks">Bookmarks</string>
+  <string name="ui_web_browser_bookmarks_empty">No bookmarks yet</string>
   <string name="ui_enter_url">Enter URL</string>
   <string name="ui_unsupported_url_protocol">Unsupported URL protocol</string>
   <string name="ui_valid_url">Valid URL</string>
