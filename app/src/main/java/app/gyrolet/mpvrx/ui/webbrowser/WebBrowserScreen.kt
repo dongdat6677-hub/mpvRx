@@ -44,6 +44,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.runtime.DisposableEffect
+import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
+import org.koin.java.KoinJavaComponent.inject
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
@@ -90,14 +93,37 @@ object WebBrowserScreen : Screen {
     val canGoForward by viewModel.canGoForward
     val loadError by viewModel.loadError
     val currentPageUrl by viewModel.pageUrl
-    val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }
-      .collectAsState(initial = false)
+    val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }.collectAsState(initial = false)
+    val preferences by inject<WebBrowserPreferences>(WebBrowserPreferences::class.java)
+    val blockAds by preferences.blockAds.collectAsState()
+    val blockTrackers by preferences.blockTrackers.collectAsState()
+    val adBlockRuleSetState =
+      remember { mutableStateOf(viewModel.buildAdBlockRuleSet(blockAds, blockTrackers)) }
+    androidx.compose.runtime.LaunchedEffect(blockAds, blockTrackers) {
+      adBlockRuleSetState.value = viewModel.buildAdBlockRuleSet(blockAds, blockTrackers)
+    }
+
+    DisposableEffect(Unit) {
+      onDispose {
+        if (preferences.autoClearOnExit.get()) {
+          webViewRef?.clearHistory()
+          webViewRef?.clearCache(true)
+          viewModel.clearHistoryRepository()
+        }
+      }
+    }
 
     fun loadUrl(input: String) {
-      val trimmed = input.trim()
-      if (trimmed.isEmpty()) return
-      val normalized = if (trimmed.contains("://")) trimmed else "https://$trimmed"
-      webViewRef?.loadUrl(normalized)
+    val trimmed = input.trim()
+    if (trimmed.isEmpty()) return
+    val normalized = if (trimmed.contains("://")) trimmed else "https://$trimmed"
+    if (normalized.startsWith("http://")) {
+        viewModel.pendingHttpFallbackUrl.value = normalized
+        webViewRef?.loadUrl(normalized.replaceFirst("http://", "https://"))
+      } else {
+        viewModel.pendingHttpFallbackUrl.value = null
+        webViewRef?.loadUrl(normalized)
+      }
     }
 
     BackHandler {
@@ -106,9 +132,7 @@ object WebBrowserScreen : Screen {
     }
     
     LaunchedEffect(webViewRef) {
-      if (webViewRef != null && viewModel.pageUrl.value == null) {
-        loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
-      }
+      if (webViewRef != null && viewModel.pageUrl.value == null)
     }
     
     Column(modifier = Modifier.fillMaxSize()) {
@@ -129,6 +153,9 @@ object WebBrowserScreen : Screen {
           }
           IconButton(onClick = { backStack.navigateTo(BrowserBookmarksScreen) }) {
             Icon(Icons.RoundedFilled.Bookmarks, contentDescription = stringResource(R.string.ui_web_browser_bookmarks))
+          }
+          IconButton(onClick = { backStack.navigateTo(BrowserSettingsScreen) }) {
+            Icon(Icons.RoundedFilled.Settings, contentDescription = stringResource(R.string.ui_web_browser_settings))
           }
           IconButton(onClick = { webViewRef?.reload() }) {
             Icon(Icons.RoundedFilled.Refresh, contentDescription = null)
@@ -204,7 +231,7 @@ object WebBrowserScreen : Screen {
                   val requestUrl = request.url.toString()
                   // view.url must not be read here: shouldInterceptRequest runs off the main
                   // thread, and WebView.getUrl() is main-thread-only (this is what crashed).
-                  return if (viewModel.adBlockRuleSet.shouldBlock(requestUrl, null)) {
+                  return if (adBlockRuleSetState.value.shouldBlock(requestUrl, null)) {
                     WebResourceResponse(
                       "text/plain",
                       "utf-8",
@@ -227,6 +254,7 @@ object WebBrowserScreen : Screen {
 
                 override fun onPageFinished(view: WebView, pageUrl: String?) {
                   viewModel.isLoading.value = false
+                  viewModel.pendingHttpFallbackUrl.value = null
                   viewModel.pageUrl.value = pageUrl
                   if (!pageUrl.isNullOrBlank()) viewModel.recordVisit(pageUrl, view.title)
                   viewModel.canGoBack.value = view.canGoBack()
@@ -239,11 +267,16 @@ object WebBrowserScreen : Screen {
                   error: WebResourceError,
                 ) {
                   if (request.isForMainFrame) {
-                    viewModel.isLoading.value = false
-                    viewModel.loadError.value = error.description?.toString()
+                    val fallbackUrl = viewModel.pendingHttpFallbackUrl.value
+                    if (fallbackUrl != null) {
+                      viewModel.pendingHttpFallbackUrl.value = null
+                      view.loadUrl(fallbackUrl)
+                    } else {
+                      viewModel.isLoading.value = false
+                      viewModel.loadError.value = error.description?.toString()
+                    }
                   }
                 }
-              }
             loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
             webViewRef = this
           }
