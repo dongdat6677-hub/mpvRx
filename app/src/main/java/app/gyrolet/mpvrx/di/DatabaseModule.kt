@@ -1061,6 +1061,10 @@ val DatabaseModule =
       RecentlyPlayedRepositoryImpl(get<MpvRxDatabase>().recentlyPlayedDao())
     }
 
+    single<BrowserHistoryRepository> {
+      BrowserHistoryRepositoryImpl(get<MpvRxDatabase>().browserHistoryDao())
+    }
+
     single { ThumbnailRepository(androidContext()) }
     single { NetworkImageRepository(context = androidContext(), networkRepository = get()) }
     single { WatchStatsRepository(androidContext()) }
