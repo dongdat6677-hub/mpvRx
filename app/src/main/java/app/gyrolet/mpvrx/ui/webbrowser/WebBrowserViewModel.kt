@@ -18,6 +18,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.java.KoinJavaComponent.inject
+import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserBookmarkRepository
+import kotlinx.coroutines.flow.Flow
 
 /**
  * Holds the in-app web browser's UI state and the ad-block rule set it
@@ -33,9 +35,17 @@ internal class WebBrowserViewModel(context: Context) {
   val loadError: MutableState<String?> = mutableStateOf(null)
 
   private val historyRepository by inject<BrowserHistoryRepository>(BrowserHistoryRepository::class.java)
+  private val bookmarkRepository by inject<BrowserBookmarkRepository>(BrowserBookmarkRepository::class.java)
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-  fun recordVisit(url: String, title: String?) {
+  fun recordVisit(url: String, title: String?)
+
+  fun isBookmarked(url: String): Flow<Boolean> = bookmarkRepository.isBookmarked(url)
+
+  fun toggleBookmark(url: String, title: String?) {
+    scope.launch { bookmarkRepository.toggle(url, title) }
+  }
+  {
     scope.launch { historyRepository.recordVisit(url, title) }
   }
 
