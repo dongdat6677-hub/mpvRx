@@ -53,6 +53,7 @@ import app.gyrolet.mpvrx.ui.utils.LocalBackStack
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import java.io.ByteArrayInputStream
 import kotlinx.serialization.Serializable
+import androidx.compose.runtime.collectAsState
 
 /**
  * The in-app web browser (Phase 1 of the integrated-browser feature; see
@@ -88,6 +89,9 @@ object WebBrowserScreen : Screen {
     val canGoBack by viewModel.canGoBack
     val canGoForward by viewModel.canGoForward
     val loadError by viewModel.loadError
+    val currentPageUrl by viewModel.pageUrl
+    val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }
+      .collectAsState(initial = false)
 
     fun loadUrl(input: String) {
       val trimmed = input.trim()
@@ -123,6 +127,9 @@ object WebBrowserScreen : Screen {
           IconButton(onClick = { backStack.navigateTo(BrowserHistoryScreen) }) {
             Icon(Icons.RoundedFilled.History, contentDescription = stringResource(R.string.ui_web_browser_history))
           }
+          IconButton(onClick = { backStack.navigateTo(BrowserBookmarksScreen) }) {
+            Icon(Icons.RoundedFilled.Bookmarks, contentDescription = stringResource(R.string.ui_web_browser_bookmarks))
+          }
           IconButton(onClick = { webViewRef?.reload() }) {
             Icon(Icons.RoundedFilled.Refresh, contentDescription = null)
           }
@@ -150,6 +157,16 @@ object WebBrowserScreen : Screen {
           keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
           keyboardActions = KeyboardActions(onGo = { loadUrl(addressBarText) }),
         )
+        IconButton(
+          onClick = { currentPageUrl?.let { viewModel.toggleBookmark(it, webViewRef?.title) } },
+          enabled = currentPageUrl != null,
+        ) {
+          Icon(
+            Icons.RoundedFilled.Bookmark,
+            contentDescription = null,
+            tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+          )
+        }
       }
 
       if (isLoading) {
