@@ -22,6 +22,8 @@ import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.database.repository.PlaybackStateRepositoryImpl
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
 import app.gyrolet.mpvrx.database.repository.RecentlyPlayedRepositoryImpl
+import app.gyrolet.mpvrx.database.repository.BrowserBookmarkRepositoryImpl
+import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserBookmarkRepository
 import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepository
 import app.gyrolet.mpvrx.domain.framecapture.FrameCaptureRepositoryImpl
 import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
@@ -982,6 +984,18 @@ val MIGRATION_31_32 =
     }
   }
 
+val MIGRATION_32_33 =
+  object : Migration(32, 33) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        "CREATE TABLE IF NOT EXISTS `BrowserBookmarkEntity` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `title` TEXT, `createdAt` INTEGER NOT NULL)",
+      )
+      db.execSQL(
+        "CREATE UNIQUE INDEX IF NOT EXISTS `index_BrowserBookmarkEntity_url` ON `BrowserBookmarkEntity` (`url`)",
+      )
+    }
+  }
+
 val MIGRATION_24_25 =
   object : Migration(24, 25) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -1052,6 +1066,7 @@ val DatabaseModule =
           MIGRATION_29_30,
           MIGRATION_30_31,
           MIGRATION_31_32,
+          MIGRATION_32_33,
         ).build()
     }
 
@@ -1063,6 +1078,10 @@ val DatabaseModule =
 
     single<BrowserHistoryRepository> {
       BrowserHistoryRepositoryImpl(get<MpvRxDatabase>().browserHistoryDao())
+    }
+
+    single<BrowserBookmarkRepository> {
+      BrowserBookmarkRepositoryImpl(get<MpvRxDatabase>().browserBookmarkDao())
     }
 
     single { ThumbnailRepository(androidContext()) }
