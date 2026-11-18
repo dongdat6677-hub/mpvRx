@@ -36,7 +36,7 @@ internal class WebBrowserViewModel(context: Context) {
   private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
   fun recordVisit(url: String, title: String?) {
-    scope.launch { historyRepository.value.recordVisit(url, title) }
+    scope.launch { historyRepository.recordVisit(url, title) }
   }
 
   /** Loaded once, lazily, from the bundled starter list (see easylist-lite.txt). */
