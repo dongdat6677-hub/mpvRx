@@ -30,6 +30,8 @@ import app.gyrolet.mpvrx.database.dao.SnapshotFolderDao
 import app.gyrolet.mpvrx.database.dao.VideoMetadataDao
 import app.gyrolet.mpvrx.database.dao.JellyfinServerDao
 import app.gyrolet.mpvrx.database.dao.NavidromeServerDao
+import app.gyrolet.mpvrx.database.dao.BrowserHistoryDao
+import app.gyrolet.mpvrx.database.entities.BrowserHistoryEntity
 import app.gyrolet.mpvrx.database.entities.AudiobookshelfServerEntity
 import app.gyrolet.mpvrx.database.entities.DirectoryScanEntity
 import app.gyrolet.mpvrx.database.entities.AudiobookEntity
@@ -71,8 +73,9 @@ import app.gyrolet.mpvrx.domain.network.NetworkConnection
     AudiobookshelfServerEntity::class,
     FrameCaptureEntity::class,
     SnapshotFolderEntity::class,
+    BrowserHistoryEntity::class,
   ],
-  version = 31,
+  version = 32,
   exportSchema = true,
 )
 @TypeConverters(NetworkProtocolConverter::class, NetworkStreamEntryTypeConverter::class)
@@ -108,4 +111,6 @@ abstract class MpvRxDatabase : RoomDatabase() {
   abstract fun frameCaptureDao(): FrameCaptureDao
 
   abstract fun snapshotFolderDao(): SnapshotFolderDao
+
+  abstract fun browserHistoryDao(): BrowserHistoryDao
 }
