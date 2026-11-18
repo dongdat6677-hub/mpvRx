@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,10 +32,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import app.gyrolet.mpvrx.ui.utils.navigateTo
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -44,34 +46,34 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.runtime.DisposableEffect
-import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
-import org.koin.java.KoinJavaComponent.inject
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
+import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
 import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
+import app.gyrolet.mpvrx.ui.utils.navigateTo
 import app.gyrolet.mpvrx.ui.utils.popSafely
 import java.io.ByteArrayInputStream
 import kotlinx.serialization.Serializable
-import androidx.compose.runtime.collectAsState
+import org.koin.java.KoinJavaComponent.inject
 
 /**
  * The in-app web browser (Phase 1 of the integrated-browser feature; see
  * docs/superpowers/specs/2026-11-17-integrated-browser-design.md).
  *
  * Every request the WebView makes passes through [WebBrowserViewModel]'s
- * [app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet] in
- * `shouldInterceptRequest` below; a blocked request never reaches the
- * network. Phase 2 (stream sniffing) extends that same override to also
- * classify and collect the requests that were *not* blocked, instead of
- * adding a second interception path.
+ * ad-block rule set in `shouldInterceptRequest` below; a blocked request
+ * never reaches the network. Phase 2 (stream sniffing) extends that same
+ * override to also classify and collect the requests that were *not*
+ * blocked, instead of adding a second interception path.
  */
 @Serializable
 object WebBrowserScreen : Screen {
-    val pendingLoadUrl: MutableState<String?> = mutableStateOf(null)
+  val pendingLoadUrl: MutableState<String?> = mutableStateOf(null)
+
   @SuppressLint("SetJavaScriptEnabled")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
@@ -80,7 +82,8 @@ object WebBrowserScreen : Screen {
     val backStack = LocalBackStack.current
     val viewModel = remember { WebBrowserViewModel(context) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
-   LaunchedEffect(pendingLoadUrl.value) {
+
+    LaunchedEffect(pendingLoadUrl.value) {
       pendingLoadUrl.value?.let { url ->
         webViewRef?.loadUrl(url)
         pendingLoadUrl.value = null
@@ -93,13 +96,15 @@ object WebBrowserScreen : Screen {
     val canGoForward by viewModel.canGoForward
     val loadError by viewModel.loadError
     val currentPageUrl by viewModel.pageUrl
-    val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }.collectAsState(initial = false)
+    val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }
+      .collectAsState(initial = false)
+
     val preferences by inject<WebBrowserPreferences>(WebBrowserPreferences::class.java)
     val blockAds by preferences.blockAds.collectAsState()
     val blockTrackers by preferences.blockTrackers.collectAsState()
     val adBlockRuleSetState =
       remember { mutableStateOf(viewModel.buildAdBlockRuleSet(blockAds, blockTrackers)) }
-    androidx.compose.runtime.LaunchedEffect(blockAds, blockTrackers) {
+    LaunchedEffect(blockAds, blockTrackers) {
       adBlockRuleSetState.value = viewModel.buildAdBlockRuleSet(blockAds, blockTrackers)
     }
 
@@ -114,10 +119,10 @@ object WebBrowserScreen : Screen {
     }
 
     fun loadUrl(input: String) {
-    val trimmed = input.trim()
-    if (trimmed.isEmpty()) return
-    val normalized = if (trimmed.contains("://")) trimmed else "https://$trimmed"
-    if (normalized.startsWith("http://")) {
+      val trimmed = input.trim()
+      if (trimmed.isEmpty()) return
+      val normalized = if (trimmed.contains("://")) trimmed else "https://$trimmed"
+      if (normalized.startsWith("http://")) {
         viewModel.pendingHttpFallbackUrl.value = normalized
         webViewRef?.loadUrl(normalized.replaceFirst("http://", "https://"))
       } else {
@@ -130,11 +135,7 @@ object WebBrowserScreen : Screen {
       val webView = webViewRef
       if (webView != null && canGoBack) webView.goBack() else backStack.popSafely()
     }
-    
-    LaunchedEffect(webViewRef) {
-      if (webViewRef != null && viewModel.pageUrl.value == null)
-    }
-    
+
     Column(modifier = Modifier.fillMaxSize()) {
       TopAppBar(
         title = { Text(stringResource(R.string.ui_web_browser)) },
@@ -217,9 +218,8 @@ object WebBrowserScreen : Screen {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
               )
-            // Rules out a dark-themed empty WebView rendering as solid black before any page loads.
-            setBackgroundColor(android.graphics.Color.BLACK)
-            setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+            setBackgroundColor(android.graphics.Color.WHITE)
+            setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             webViewClient =
@@ -229,8 +229,6 @@ object WebBrowserScreen : Screen {
                   request: WebResourceRequest,
                 ): WebResourceResponse? {
                   val requestUrl = request.url.toString()
-                  // view.url must not be read here: shouldInterceptRequest runs off the main
-                  // thread, and WebView.getUrl() is main-thread-only (this is what crashed).
                   return if (adBlockRuleSetState.value.shouldBlock(requestUrl, null)) {
                     WebResourceResponse(
                       "text/plain",
@@ -241,7 +239,6 @@ object WebBrowserScreen : Screen {
                       ByteArrayInputStream(ByteArray(0)),
                     )
                   } else {
-                    // Default handling; Phase 2 will also record requestUrl/view.url here.
                     null
                   }
                 }
@@ -256,9 +253,9 @@ object WebBrowserScreen : Screen {
                   viewModel.isLoading.value = false
                   viewModel.pendingHttpFallbackUrl.value = null
                   viewModel.pageUrl.value = pageUrl
-                  if (!pageUrl.isNullOrBlank()) viewModel.recordVisit(pageUrl, view.title)
                   viewModel.canGoBack.value = view.canGoBack()
                   viewModel.canGoForward.value = view.canGoForward()
+                  if (!pageUrl.isNullOrBlank()) viewModel.recordVisit(pageUrl, view.title)
                 }
 
                 override fun onReceivedError(
@@ -277,7 +274,9 @@ object WebBrowserScreen : Screen {
                     }
                   }
                 }
-            loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
+              }
+            loadUrl("https://www.google.com")
+            post { setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null) }
             webViewRef = this
           }
         },
