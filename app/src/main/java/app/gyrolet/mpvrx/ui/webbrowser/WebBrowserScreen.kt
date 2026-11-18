@@ -33,6 +33,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import app.gyrolet.mpvrx.ui.utils.navigateTo
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,6 +66,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 object WebBrowserScreen : Screen {
+    val pendingLoadUrl: MutableState<String?> = mutableStateOf(null)
   @SuppressLint("SetJavaScriptEnabled")
   @OptIn(ExperimentalMaterial3Api::class)
   @Composable
@@ -73,6 +75,12 @@ object WebBrowserScreen : Screen {
     val backStack = LocalBackStack.current
     val viewModel = remember { WebBrowserViewModel(context) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
+   LaunchedEffect(pendingLoadUrl.value) {
+      pendingLoadUrl.value?.let { url ->
+        webViewRef?.loadUrl(url)
+        pendingLoadUrl.value = null
+      }
+    }
 
     val addressBarText by viewModel.url
     val isLoading by viewModel.isLoading
@@ -94,7 +102,7 @@ object WebBrowserScreen : Screen {
     
     LaunchedEffect(webViewRef) {
       if (webViewRef != null && viewModel.pageUrl.value == null) {
-        loadUrl("https://searx.tiekoetter.com/search?q=%s&safesearch=0")
+        loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
       }
     }
     
@@ -111,6 +119,9 @@ object WebBrowserScreen : Screen {
           }
         },
         actions = {
+          IconButton(onClick = { backStack.navigateTo(BrowserHistoryScreen) }) {
+            Icon(Icons.RoundedFilled.History, contentDescription = stringResource(R.string.ui_web_browser_history))
+          }
           IconButton(onClick = { webViewRef?.reload() }) {
             Icon(Icons.RoundedFilled.Refresh, contentDescription = null)
           }
@@ -199,6 +210,7 @@ object WebBrowserScreen : Screen {
                 override fun onPageFinished(view: WebView, pageUrl: String?) {
                   viewModel.isLoading.value = false
                   viewModel.pageUrl.value = pageUrl
+                  if (!pageUrl.isNullOrBlank()) viewModel.recordVisit(pageUrl, view.title)
                   viewModel.canGoBack.value = view.canGoBack()
                   viewModel.canGoForward.value = view.canGoForward()
                 }
@@ -214,7 +226,7 @@ object WebBrowserScreen : Screen {
                   }
                 }
               }
-            loadUrl("https://searx.tiekoetter.com/search?q=%s&safesearch=0")
+            loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
             webViewRef = this
           }
         },
