@@ -17,6 +17,7 @@ import app.gyrolet.mpvrx.data.network.XtreamClient
 import app.gyrolet.mpvrx.data.network.credentials.AndroidNetworkCredentialKey
 import app.gyrolet.mpvrx.data.network.credentials.NetworkCredentialCipher
 import app.gyrolet.mpvrx.database.MpvRxDatabase
+import app.gyrolet.mpvrx.database.repository.BrowserHistoryRepositoryImpl
 import app.gyrolet.mpvrx.database.repository.NetworkStreamEntryRepository
 import app.gyrolet.mpvrx.database.repository.PlaybackStateRepositoryImpl
 import app.gyrolet.mpvrx.database.repository.PlaylistRepository
@@ -27,6 +28,7 @@ import app.gyrolet.mpvrx.domain.playbackstate.repository.PlaybackStateRepository
 import app.gyrolet.mpvrx.domain.recentlyplayed.repository.RecentlyPlayedRepository
 import app.gyrolet.mpvrx.domain.network.NetworkImageRepository
 import app.gyrolet.mpvrx.domain.thumbnail.ThumbnailRepository
+import app.gyrolet.mpvrx.domain.webbrowser.repository.BrowserHistoryRepository
 import app.gyrolet.mpvrx.repository.WatchStatsRepository
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.koin.androidContext
@@ -968,6 +970,18 @@ val MIGRATION_30_31 =
     }
   }
 
+val MIGRATION_31_32 =
+  object : Migration(31, 32) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        "CREATE TABLE IF NOT EXISTS `BrowserHistoryEntity` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `url` TEXT NOT NULL, `title` TEXT, `visitedAt` INTEGER NOT NULL)",
+      )
+      db.execSQL(
+        "CREATE INDEX IF NOT EXISTS `index_BrowserHistoryEntity_visitedAt` ON `BrowserHistoryEntity` (`visitedAt`)",
+      )
+    }
+  }
+
 val MIGRATION_24_25 =
   object : Migration(24, 25) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -1037,6 +1051,7 @@ val DatabaseModule =
           MIGRATION_28_29,
           MIGRATION_29_30,
           MIGRATION_30_31,
+          MIGRATION_31_32,
         ).build()
     }
 
