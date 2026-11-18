@@ -9,6 +9,7 @@
 package app.gyrolet.mpvrx.ui.webbrowser
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.graphics.Bitmap
 import android.os.Message
 import android.view.ViewGroup
@@ -38,6 +39,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,6 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
 import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -63,14 +66,13 @@ import kotlinx.serialization.Serializable
 import org.koin.java.KoinJavaComponent.inject
 
 /**
- * The in-app web browser (Phase 1 of the integrated-browser feature; see
- * docs/superpowers/specs/2026-11-17-integrated-browser-design.md).
+ * The in-app web browser. See docs/superpowers/specs/2026-11-17-integrated-browser-design.md
+ * and docs/superpowers/specs/2026-11-18-integrated-browser-phase1b-design.md.
  *
- * Every request the WebView makes passes through [WebBrowserViewModel]'s
- * ad-block rule set in `shouldInterceptRequest` below; a blocked request
- * never reaches the network. Phase 2 (stream sniffing) extends that same
- * override to also classify and collect the requests that were *not*
- * blocked, instead of adding a second interception path.
+ * Every request the active tab's WebView makes passes through the shared ad-block rule set
+ * in `shouldInterceptRequest` inside [createWebView]; a blocked request never reaches the
+ * network. Phase 2 (stream sniffing) extends that same override to also classify and collect
+ * the requests that were *not* blocked, instead of adding a second interception path.
  */
 @Serializable
 object WebBrowserScreen : Screen {
@@ -83,21 +85,16 @@ object WebBrowserScreen : Screen {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
     val viewModel = remember { WebBrowserViewModel(context) }
-    var webViewRef by remember { mutableStateOf<WebView?>(null) }
+    val tabs = viewModel.tabs
+    val activeTabId by viewModel.activeTabId
+    val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
 
-    LaunchedEffect(pendingLoadUrl.value) {
-      pendingLoadUrl.value?.let { url ->
-        webViewRef?.loadUrl(url)
-        pendingLoadUrl.value = null
-      }
-    }
-
-    val addressBarText by viewModel.url
-    val isLoading by viewModel.isLoading
-    val canGoBack by viewModel.canGoBack
-    val canGoForward by viewModel.canGoForward
-    val loadError by viewModel.loadError
-    val currentPageUrl by viewModel.pageUrl
+    val addressBarText by activeTab.addressBarText
+    val isLoading by activeTab.isLoading
+    val canGoBack by activeTab.canGoBack
+    val canGoForward by activeTab.canGoForward
+    val loadError by activeTab.loadError
+    val currentPageUrl by activeTab.pageUrl
     val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }
       .collectAsState(initial = false)
     val pendingNavigation by viewModel.pendingNavigationConfirmation
@@ -118,11 +115,20 @@ object WebBrowserScreen : Screen {
     LaunchedEffect(blockPopups) { blockPopupsState.value = blockPopups }
     LaunchedEffect(blockRedirects) { blockRedirectsState.value = blockRedirects }
 
+    LaunchedEffect(pendingLoadUrl.value) {
+      pendingLoadUrl.value?.let { url ->
+        activeTab.webView?.loadUrl(url)
+        pendingLoadUrl.value = null
+      }
+    }
+
     DisposableEffect(Unit) {
       onDispose {
         if (preferences.autoClearOnExit.get()) {
-          webViewRef?.clearHistory()
-          webViewRef?.clearCache(true)
+          tabs.forEach {
+            it.webView?.clearHistory()
+            it.webView?.clearCache(true)
+          }
           viewModel.clearHistoryRepository()
         }
       }
@@ -133,16 +139,16 @@ object WebBrowserScreen : Screen {
       if (trimmed.isEmpty()) return
       val normalized = if (trimmed.contains("://")) trimmed else "https://$trimmed"
       if (normalized.startsWith("http://")) {
-        viewModel.pendingHttpFallbackUrl.value = normalized
-        webViewRef?.loadUrl(normalized.replaceFirst("http://", "https://"))
+        activeTab.pendingHttpFallbackUrl.value = normalized
+        activeTab.webView?.loadUrl(normalized.replaceFirst("http://", "https://"))
       } else {
-        viewModel.pendingHttpFallbackUrl.value = null
-        webViewRef?.loadUrl(normalized)
+        activeTab.pendingHttpFallbackUrl.value = null
+        activeTab.webView?.loadUrl(normalized)
       }
     }
 
     BackHandler {
-      val webView = webViewRef
+      val webView = activeTab.webView
       if (webView != null && canGoBack) webView.goBack() else backStack.popSafely()
     }
 
@@ -168,10 +174,18 @@ object WebBrowserScreen : Screen {
           IconButton(onClick = { backStack.navigateTo(BrowserSettingsScreen) }) {
             Icon(Icons.RoundedFilled.Settings, contentDescription = stringResource(R.string.ui_web_browser_settings))
           }
-          IconButton(onClick = { webViewRef?.reload() }) {
+          IconButton(onClick = { activeTab.webView?.reload() }) {
             Icon(Icons.RoundedFilled.Refresh, contentDescription = null)
           }
         },
+      )
+
+      BrowserTabBar(
+        tabs = tabs,
+        activeTabId = activeTabId,
+        onSelectTab = { viewModel.activeTabId.value = it },
+        onCloseTab = { viewModel.closeTab(it) },
+        onNewTab = { viewModel.addTab() },
       )
 
       Row(
@@ -180,15 +194,15 @@ object WebBrowserScreen : Screen {
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
       ) {
-        IconButton(onClick = { webViewRef?.goBack() }, enabled = canGoBack) {
+        IconButton(onClick = { activeTab.webView?.goBack() }, enabled = canGoBack) {
           Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null)
         }
-        IconButton(onClick = { webViewRef?.goForward() }, enabled = canGoForward) {
+        IconButton(onClick = { activeTab.webView?.goForward() }, enabled = canGoForward) {
           Icon(Icons.RoundedFilled.ArrowForward, contentDescription = null)
         }
         OutlinedTextField(
           value = addressBarText,
-          onValueChange = { viewModel.url.value = it },
+          onValueChange = { activeTab.addressBarText.value = it },
           modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
           singleLine = true,
           placeholder = { Text(stringResource(R.string.ui_web_browser_url_hint)) },
@@ -196,7 +210,7 @@ object WebBrowserScreen : Screen {
           keyboardActions = KeyboardActions(onGo = { loadUrl(addressBarText) }),
         )
         IconButton(
-          onClick = { currentPageUrl?.let { viewModel.toggleBookmark(it, webViewRef?.title) } },
+          onClick = { currentPageUrl?.let { viewModel.toggleBookmark(it, activeTab.pageTitle.value) } },
           enabled = currentPageUrl != null,
         ) {
           Icon(
@@ -219,127 +233,27 @@ object WebBrowserScreen : Screen {
         )
       }
 
-      AndroidView(
-        modifier = Modifier.weight(1f).fillMaxWidth(),
-        factory = { ctx ->
-          WebView(ctx).apply {
-            layoutParams =
-              ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-              )
-            setBackgroundColor(android.graphics.Color.WHITE)
-            setLayerType(android.view.View.LAYER_TYPE_SOFTWARE, null)
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.javaScriptCanOpenWindowsAutomatically = true
-            settings.setSupportMultipleWindows(true)
-            webViewClient =
-              object : WebViewClient() {
-                override fun shouldInterceptRequest(
-                  view: WebView,
-                  request: WebResourceRequest,
-                ): WebResourceResponse? {
-                  val requestUrl = request.url.toString()
-                  return if (adBlockRuleSetState.value.shouldBlock(requestUrl, null)) {
-                    WebResourceResponse(
-                      "text/plain",
-                      "utf-8",
-                      403,
-                      "Blocked",
-                      emptyMap(),
-                      ByteArrayInputStream(ByteArray(0)),
-                    )
-                  } else {
-                    null
-                  }
-                }
-
-                override fun shouldOverrideUrlLoading(
-                  view: WebView,
-                  request: WebResourceRequest,
-                ): Boolean {
-                  if (!blockRedirectsState.value || request.hasGesture()) return false
-                  val currentHost = runCatching { URI(viewModel.pageUrl.value).host }.getOrNull()
-                  val targetHost = runCatching { URI(request.url.toString()).host }.getOrNull()
-                  if (targetHost != null && targetHost != currentHost) {
-                    viewModel.requestNavigationConfirmation(request.url.toString(), view.title)
-                    return true
-                  }
-                  return false
-                }
-
-                override fun onPageStarted(view: WebView, pageUrl: String?, favicon: Bitmap?) {
-                  viewModel.isLoading.value = true
-                  viewModel.loadError.value = null
-                  viewModel.url.value = pageUrl.orEmpty()
-                }
-
-                override fun onPageFinished(view: WebView, pageUrl: String?) {
-                  viewModel.isLoading.value = false
-                  viewModel.pendingHttpFallbackUrl.value = null
-                  viewModel.pageUrl.value = pageUrl
-                  viewModel.canGoBack.value = view.canGoBack()
-                  viewModel.canGoForward.value = view.canGoForward()
-                  if (!pageUrl.isNullOrBlank()) viewModel.recordVisit(pageUrl, view.title)
-                }
-
-                override fun onReceivedError(
-                  view: WebView,
-                  request: WebResourceRequest,
-                  error: WebResourceError,
-                ) {
-                  if (request.isForMainFrame) {
-                    val fallbackUrl = viewModel.pendingHttpFallbackUrl.value
-                    if (fallbackUrl != null) {
-                      viewModel.pendingHttpFallbackUrl.value = null
-                      view.loadUrl(fallbackUrl)
-                    } else {
-                      viewModel.isLoading.value = false
-                      viewModel.loadError.value = error.description?.toString()
-                    }
-                  }
-                }
-              }
-            webChromeClient =
-              object : WebChromeClient() {
-                override fun onCreateWindow(
-                  view: WebView,
-                  isDialog: Boolean,
-                  isUserGesture: Boolean,
-                  resultMsg: Message,
-                ): Boolean {
-                  if (!blockPopupsState.value) return false
-                  val tempWebView = WebView(ctx)
-                  tempWebView.webViewClient =
-                    object : WebViewClient() {
-                      override fun shouldOverrideUrlLoading(
-                        v: WebView,
-                        request: WebResourceRequest,
-                      ): Boolean {
-                        viewModel.requestNavigationConfirmation(request.url.toString(), view.title)
-                        tempWebView.destroy()
-                        return true
-                      }
-                    }
-                  val transport = resultMsg.obj as WebView.WebViewTransport
-                  transport.webView = tempWebView
-                  resultMsg.sendToTarget()
-                  return true
-                }
-              }
-            loadUrl("https://www.google.com")
-            post { setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null) }
-            webViewRef = this
-          }
-        },
-      )
+      key(activeTab.id) {
+        AndroidView(
+          modifier = Modifier.weight(1f).fillMaxWidth(),
+          factory = { ctx ->
+            val existing = activeTab.webView
+            if (existing != null) {
+              (existing.parent as? ViewGroup)?.removeView(existing)
+              existing
+            } else {
+              createWebView(ctx, activeTab, viewModel, adBlockRuleSetState, blockPopupsState, blockRedirectsState)
+                .also { activeTab.webView = it }
+            }
+          },
+        )
+      }
 
       pendingNavigation?.let { pending ->
         BrowserConfirmNavigationDialog(
           pending = pending,
           onAllow = {
-            webViewRef?.loadUrl(pending.url)
+            activeTab.webView?.loadUrl(pending.url)
             viewModel.confirmNavigation()
           },
           onDeny = { viewModel.confirmNavigation() },
@@ -348,3 +262,122 @@ object WebBrowserScreen : Screen {
     }
   }
 }
+
+private fun createWebView(
+  ctx: Context,
+  tab: BrowserTabState,
+  viewModel: WebBrowserViewModel,
+  adBlockRuleSetState: MutableState<AdBlockRuleSet>,
+  blockPopupsState: MutableState<Boolean>,
+  blockRedirectsState: MutableState<Boolean>,
+): WebView =
+  WebView(ctx).apply {
+    layoutParams =
+      ViewGroup.LayoutParams(
+        ViewGroup.LayoutParams.MATCH_PARENT,
+        ViewGroup.LayoutParams.MATCH_PARENT,
+      )
+    setBackgroundColor(android.graphics.Color.BLACK)
+    setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+    loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
+    settings.javaScriptEnabled = true
+    settings.domStorageEnabled = true
+    settings.javaScriptCanOpenWindowsAutomatically = true
+    settings.setSupportMultipleWindows(true)
+    webViewClient =
+      object : WebViewClient() {
+        override fun shouldInterceptRequest(
+          view: WebView,
+          request: WebResourceRequest,
+        ): WebResourceResponse? {
+          val requestUrl = request.url.toString()
+          return if (adBlockRuleSetState.value.shouldBlock(requestUrl, null)) {
+            WebResourceResponse(
+              "text/plain",
+              "utf-8",
+              403,
+              "Blocked",
+              emptyMap(),
+              ByteArrayInputStream(ByteArray(0)),
+            )
+          } else {
+            null
+          }
+        }
+
+        override fun shouldOverrideUrlLoading(
+          view: WebView,
+          request: WebResourceRequest,
+        ): Boolean {
+          if (!blockRedirectsState.value || request.hasGesture()) return false
+          val currentHost = runCatching { URI(tab.pageUrl.value).host }.getOrNull()
+          val targetHost = runCatching { URI(request.url.toString()).host }.getOrNull()
+          if (targetHost != null && targetHost != currentHost) {
+            viewModel.requestNavigationConfirmation(request.url.toString(), view.title)
+            return true
+          }
+          return false
+        }
+
+        override fun onPageStarted(view: WebView, pageUrl: String?, favicon: Bitmap?) {
+          tab.isLoading.value = true
+          tab.loadError.value = null
+          tab.addressBarText.value = pageUrl.orEmpty()
+        }
+
+        override fun onPageFinished(view: WebView, pageUrl: String?) {
+          tab.isLoading.value = false
+          tab.pendingHttpFallbackUrl.value = null
+          tab.pageUrl.value = pageUrl
+          tab.pageTitle.value = view.title
+          tab.canGoBack.value = view.canGoBack()
+          tab.canGoForward.value = view.canGoForward()
+          if (!pageUrl.isNullOrBlank()) viewModel.recordVisit(pageUrl, view.title)
+        }
+
+        override fun onReceivedError(
+          view: WebView,
+          request: WebResourceRequest,
+          error: WebResourceError,
+        ) {
+          if (request.isForMainFrame) {
+            val fallbackUrl = tab.pendingHttpFallbackUrl.value
+            if (fallbackUrl != null) {
+              tab.pendingHttpFallbackUrl.value = null
+              view.loadUrl(fallbackUrl)
+            } else {
+              tab.isLoading.value = false
+              tab.loadError.value = error.description?.toString()
+            }
+          }
+        }
+      }
+    webChromeClient =
+      object : WebChromeClient() {
+        override fun onCreateWindow(
+          view: WebView,
+          isDialog: Boolean,
+          isUserGesture: Boolean,
+          resultMsg: Message,
+        ): Boolean {
+          if (!blockPopupsState.value) return false
+          val tempWebView = WebView(ctx)
+          tempWebView.webViewClient =
+            object : WebViewClient() {
+              override fun shouldOverrideUrlLoading(
+                v: WebView,
+                request: WebResourceRequest,
+              ): Boolean {
+                viewModel.requestNavigationConfirmation(request.url.toString(), view.title)
+                tempWebView.destroy()
+                return true
+              }
+            }
+          val transport = resultMsg.obj as WebView.WebViewTransport
+          transport.webView = tempWebView
+          resultMsg.sendToTarget()
+          return true
+        }
+      }
+    post { setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null) }
+  }
