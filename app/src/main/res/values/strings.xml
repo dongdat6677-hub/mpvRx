@@ -1707,6 +1707,12 @@
   <string name="ui_web_browser_history_empty">No browsing history yet</string>
   <string name="ui_web_browser_bookmarks">Bookmarks</string>
   <string name="ui_web_browser_bookmarks_empty">No bookmarks yet</string>
+  <string name="ui_web_browser_settings">Browser settings</string>
+  <string name="ui_web_browser_auto_clear">Auto-clear history &amp; cache on exit</string>
+  <string name="ui_web_browser_block_ads">Block ads</string>
+  <string name="ui_web_browser_block_trackers">Block trackers</string>
+  <string name="ui_web_browser_block_popups">Block popups</string>
+  <string name="ui_web_browser_block_redirects">Block automatic redirects</string>
   <string name="ui_enter_url">Enter URL</string>
   <string name="ui_unsupported_url_protocol">Unsupported URL protocol</string>
   <string name="ui_valid_url">Valid URL</string>
