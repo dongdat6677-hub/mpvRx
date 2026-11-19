@@ -124,6 +124,7 @@ object WebBrowserScreen : Screen {
       .collectAsState(initial = false)
     val pendingNavigation by viewModel.pendingNavigationConfirmation
     val sniffedStreams = activeTab.sniffedStreams
+    val vietnameseSubtitleUrl by activeTab.vietnameseSubtitleUrl
 
     val preferences by inject<WebBrowserPreferences>(WebBrowserPreferences::class.java)
     val blockAds by preferences.blockAds.collectAsState()
@@ -340,6 +341,7 @@ object WebBrowserScreen : Screen {
         isOpen = showStreamsSheet,
         pageUrl = currentPageUrl,
         streams = sniffedStreams,
+        vietnameseSubtitleUrl = vietnameseSubtitleUrl,
         onDismiss = { showStreamsSheet = false },
       )
     }
@@ -422,8 +424,11 @@ private fun createWebView(
               ByteArrayInputStream(ByteArray(0)),
             )
           }
+          if (StreamSniffer.isVietnameseSubtitle(requestUrl)) {
+            view.post { tab.setVietnameseSubtitleIfAbsent(requestUrl) }
+          }
           StreamSniffer.classify(requestUrl)?.let { base ->
-            val headers = buildStreamHeaders(request, tab)
+          val headers = buildStreamHeaders(request, tab)
             view.post { tab.addSniffedStream(base.copy(headers = headers)) }
           }
           return null
