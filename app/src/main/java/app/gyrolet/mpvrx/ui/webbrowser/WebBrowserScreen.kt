@@ -280,6 +280,7 @@ object WebBrowserScreen : Screen {
 
       BrowserStreamsSheet(
         isOpen = showStreamsSheet,
+        pageUrl = currentPageUrl,
         streams = sniffedStreams,
         onDismiss = { showStreamsSheet = false },
       )
