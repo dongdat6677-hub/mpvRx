@@ -15,6 +15,7 @@ data class SniffedStream(
   val type: StreamType,
   val qualityLabel: String?,
   val isLikelyAd: Boolean,
+  val headers: Map<String, String> = emptyMap(),
 )
 
 object StreamSniffer {
