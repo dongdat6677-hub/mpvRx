@@ -1719,7 +1719,6 @@
   <string name="ui_web_browser_close_tab">Close tab</string>
   <string name="ui_web_browser_streams">Streams found</string>
   <string name="ui_web_browser_streams_empty">No video streams detected on this page yet</string>
-  <string name="ui_web_browser_stream_ad_tag">possibly an ad</string>
   <string name="ui_web_browser_play_via_ytdlp">Play via yt-dlp</string>
   <string name="ui_web_browser_resolving">Resolving…</string>
   <string name="ui_web_browser_vi_subtitle_found">Đã tìm thấy phụ đề tiếng Việt — sẽ tự gửi kèm khi phát</string>
