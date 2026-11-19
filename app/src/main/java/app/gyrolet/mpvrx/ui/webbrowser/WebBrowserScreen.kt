@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -51,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
+import app.gyrolet.mpvrx.domain.webbrowser.StreamSniffer
 import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
@@ -71,8 +74,8 @@ import org.koin.java.KoinJavaComponent.inject
  *
  * Every request the active tab's WebView makes passes through the shared ad-block rule set
  * in `shouldInterceptRequest` inside [createWebView]; a blocked request never reaches the
- * network. Phase 2 (stream sniffing) extends that same override to also classify and collect
- * the requests that were *not* blocked, instead of adding a second interception path.
+ * network. A request that is *not* blocked is also classified by [StreamSniffer] (Phase 2) and,
+ * if it looks like a video stream, added to that tab's [BrowserTabState.sniffedStreams].
  */
 @Serializable
 object WebBrowserScreen : Screen {
@@ -88,10 +91,11 @@ object WebBrowserScreen : Screen {
     val viewModel =
       remember {
         viewModelInstance ?: WebBrowserViewModel(context.applicationContext).also { viewModelInstance = it }
-    }
+      }
     val tabs = viewModel.tabs
     val activeTabId by viewModel.activeTabId
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
+    var showStreamsSheet by remember { mutableStateOf(false) }
 
     val addressBarText by activeTab.addressBarText
     val isLoading by activeTab.isLoading
@@ -102,6 +106,7 @@ object WebBrowserScreen : Screen {
     val isBookmarked by remember(currentPageUrl) { viewModel.isBookmarked(currentPageUrl ?: "") }
       .collectAsState(initial = false)
     val pendingNavigation by viewModel.pendingNavigationConfirmation
+    val sniffedStreams = activeTab.sniffedStreams
 
     val preferences by inject<WebBrowserPreferences>(WebBrowserPreferences::class.java)
     val blockAds by preferences.blockAds.collectAsState()
@@ -169,6 +174,15 @@ object WebBrowserScreen : Screen {
           }
         },
         actions = {
+          IconButton(onClick = { showStreamsSheet = true }) {
+            BadgedBox(
+              badge = {
+                if (sniffedStreams.isNotEmpty()) Badge { Text(sniffedStreams.size.toString()) }
+              },
+            ) {
+              Icon(Icons.RoundedFilled.VideoLibrary, contentDescription = stringResource(R.string.ui_web_browser_streams))
+            }
+          }
           IconButton(onClick = { backStack.navigateTo(BrowserHistoryScreen) }) {
             Icon(Icons.RoundedFilled.History, contentDescription = stringResource(R.string.ui_web_browser_history))
           }
@@ -263,6 +277,12 @@ object WebBrowserScreen : Screen {
           onDeny = { viewModel.confirmNavigation() },
         )
       }
+
+      BrowserStreamsSheet(
+        isOpen = showStreamsSheet,
+        streams = sniffedStreams,
+        onDismiss = { showStreamsSheet = false },
+      )
     }
   }
 }
@@ -295,8 +315,8 @@ private fun createWebView(
           request: WebResourceRequest,
         ): WebResourceResponse? {
           val requestUrl = request.url.toString()
-          return if (adBlockRuleSetState.value.shouldBlock(requestUrl, null)) {
-            WebResourceResponse(
+          if (adBlockRuleSetState.value.shouldBlock(requestUrl, null)) {
+            return WebResourceResponse(
               "text/plain",
               "utf-8",
               403,
@@ -304,9 +324,11 @@ private fun createWebView(
               emptyMap(),
               ByteArrayInputStream(ByteArray(0)),
             )
-          } else {
-            null
           }
+          StreamSniffer.classify(requestUrl)?.let { stream ->
+            view.post { tab.addSniffedStream(stream) }
+          }
+          return null
         }
 
         override fun shouldOverrideUrlLoading(
@@ -327,6 +349,7 @@ private fun createWebView(
           tab.isLoading.value = true
           tab.loadError.value = null
           tab.addressBarText.value = pageUrl.orEmpty()
+          tab.clearSniffedStreams()
         }
 
         override fun onPageFinished(view: WebView, pageUrl: String?) {
