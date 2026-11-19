@@ -34,6 +34,12 @@ class BrowserTabState(val id: String = UUID.randomUUID().toString()) {
 
   val sniffedStreams: SnapshotStateList<SniffedStream> = mutableStateListOf()
   private val seenStreamUrls = mutableSetOf<String>()
+  val vietnameseSubtitleUrl: MutableState<String?> = mutableStateOf(null)
+
+  /** Keeps the first Vietnamese subtitle found on the page — the request says to attach only one. */
+  fun setVietnameseSubtitleIfAbsent(url: String) {
+    if (vietnameseSubtitleUrl.value == null) vietnameseSubtitleUrl.value = url
+  }
 
   fun addSniffedStream(stream: SniffedStream) {
     if (seenStreamUrls.add(stream.url)) {
@@ -45,5 +51,6 @@ class BrowserTabState(val id: String = UUID.randomUUID().toString()) {
   fun clearSniffedStreams() {
     sniffedStreams.clear()
     seenStreamUrls.clear()
-  }
+    vietnameseSubtitleUrl.value = null
+   }
 }
