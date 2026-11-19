@@ -42,6 +42,9 @@ import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.LaunchedEffect
+import app.gyrolet.mpvrx.domain.webbrowser.StreamVerification
+import app.gyrolet.mpvrx.domain.webbrowser.StreamVerifier
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,14 +52,23 @@ import org.koin.compose.koinInject
 fun BrowserStreamsSheet(
   isOpen: Boolean,
   pageUrl: String?,
-  streams: List<SniffedStream>,
-  vietnameseSubtitleUrl: String?,
+  tab: BrowserTabState,
   onDismiss: () -> Unit,
 ) {
   if (!isOpen) return
 
+  val streams = tab.sniffedStreams
+  val vietnameseSubtitleUrl = tab.vietnameseSubtitleUrl.value
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
+
+  LaunchedEffect(isOpen) {
+    streams
+      .filter { it.verification == StreamVerification.PENDING && !it.isLikelyAd }
+      .forEach { stream ->
+        scope.launch { tab.updateStreamVerification(StreamVerifier.verify(stream)) }
+      }
+  }
   val ytdlPreferences = koinInject<YtdlPreferences>()
   val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
   val sorted = StreamSniffer.sortedByPreferredQuality(streams)
@@ -116,16 +128,22 @@ fun BrowserStreamsSheet(
       } else if (sorted.isNotEmpty()) {
         LazyColumn {
           items(sorted) { stream ->
-            val qualityText = stream.qualityLabel ?: stream.type.name
-            val subtitle =
-              if (stream.isLikelyAd) {
-                "$qualityText · ${stringResource(R.string.ui_web_browser_stream_ad_tag)}"
-              } else {
-                qualityText
-              }
+            val details = buildList {
+              add(stream.qualityLabel ?: stream.type.name)
+              stream.durationMs?.let { add(formatStreamDuration(it)) }
+              stream.bitrate?.let { add(formatStreamBitrate(it)) }
+              if (stream.isLikelyAd) add(stringResource(R.string.ui_web_browser_stream_ad_tag))
+              add(
+                when (stream.verification) {
+                  StreamVerification.VERIFIED -> stringResource(R.string.ui_web_browser_stream_verified)
+                  StreamVerification.FAILED -> stringResource(R.string.ui_web_browser_stream_unverified)
+                  StreamVerification.PENDING -> stringResource(R.string.ui_web_browser_stream_checking)
+                },
+              )
+            }
             ListItem(
-              headlineContent = { Text(stream.url, maxLines = 1) },
-              supportingContent = { Text(subtitle) },
+              headlineContent = { Text(streamDisplayName(stream.url), maxLines = 1) },
+              supportingContent = { Text(details.joinToString(" · ")) },
               modifier =
                 Modifier.clickable {
                   MediaUtils.playFile(
@@ -143,4 +161,19 @@ fun BrowserStreamsSheet(
       }
     }
   }
+}
+
+private fun streamDisplayName(url: String): String {
+  val uri = Uri.parse(url)
+  val last = uri.lastPathSegment
+  return if (!last.isNullOrBlank()) last else (uri.host ?: url)
+}
+
+private fun formatStreamDuration(durationMs: Long): String {
+  val totalSeconds = durationMs / 1000
+  return "%d:%02d".format(totalSeconds / 60, totalSeconds % 60)
+}
+
+private fun formatStreamBitrate(bitrate: Long): String {
+  return "${bitrate / 1000} kbps"
 }
