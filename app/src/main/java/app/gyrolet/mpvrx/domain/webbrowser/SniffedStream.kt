@@ -47,4 +47,15 @@ object StreamSniffer {
       val height = stream.qualityLabel?.removeSuffix("p")?.toIntOrNull()
       if (height == null) Int.MAX_VALUE else kotlin.math.abs(height - 1080)
     }
+
+  private val SUBTITLE_EXTENSIONS = listOf(".vtt", ".srt", ".ass", ".ssa")
+  private val VIETNAMESE_MARKER_REGEX =
+    Regex("(?i)(^|[/_\\-.?&=])(vi|vie|viet|vietnamese|việt)([/_\\-.?&=]|$)")
+
+  /** Heuristic: a subtitle file whose URL marks itself as Vietnamese (e.g. "sub_vi.vtt", "?lang=vi"). */
+  fun isVietnameseSubtitle(requestUrl: String): Boolean {
+    val lower = requestUrl.lowercase()
+    if (SUBTITLE_EXTENSIONS.none { lower.contains(it) }) return false
+    return VIETNAMESE_MARKER_REGEX.containsMatchIn(requestUrl)
+  }
 }
