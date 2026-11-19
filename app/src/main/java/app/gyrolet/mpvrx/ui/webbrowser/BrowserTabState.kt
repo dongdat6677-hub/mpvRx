@@ -47,6 +47,11 @@ class BrowserTabState(val id: String = UUID.randomUUID().toString()) {
     }
   }
 
+  fun updateStreamVerification(updated: SniffedStream) {
+    val index = sniffedStreams.indexOfFirst { it.url == updated.url }
+    if (index >= 0) sniffedStreams[index] = updated
+  }
+
   /** Called on every new page load — a stream sniffed on the previous page is no longer relevant. */
   fun clearSniffedStreams() {
     sniffedStreams.clear()
