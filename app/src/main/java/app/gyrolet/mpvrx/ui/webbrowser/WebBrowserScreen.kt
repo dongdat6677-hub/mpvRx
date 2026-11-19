@@ -77,6 +77,7 @@ import org.koin.java.KoinJavaComponent.inject
 @Serializable
 object WebBrowserScreen : Screen {
   val pendingLoadUrl: MutableState<String?> = mutableStateOf(null)
+  private var viewModelInstance: WebBrowserViewModel? = null
 
   @SuppressLint("SetJavaScriptEnabled")
   @OptIn(ExperimentalMaterial3Api::class)
@@ -84,7 +85,10 @@ object WebBrowserScreen : Screen {
   override fun Content() {
     val context = LocalContext.current
     val backStack = LocalBackStack.current
-    val viewModel = remember { WebBrowserViewModel(context) }
+    val viewModel =
+      remember {
+        viewModelInstance ?: WebBrowserViewModel(context.applicationContext).also { viewModelInstance = it }
+    }
     val tabs = viewModel.tabs
     val activeTabId by viewModel.activeTabId
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
