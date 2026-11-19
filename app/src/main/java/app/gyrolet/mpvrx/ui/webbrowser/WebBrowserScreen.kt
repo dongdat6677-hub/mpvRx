@@ -393,7 +393,7 @@ private fun createWebView(
       )
     setBackgroundColor(android.graphics.Color.BLACK)
     setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
-    loadUrl("https://searx.tiekoetter.com/search?q=&safesearch=0&language=all")
+    loadUrl("https://www.google.com/webhp?safe=off&pws=0&filter=0&nfpr=1&hl=en")
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
     settings.javaScriptCanOpenWindowsAutomatically = true
@@ -427,7 +427,7 @@ private fun createWebView(
           if (StreamSniffer.isVietnameseSubtitle(requestUrl)) {
             view.post { tab.setVietnameseSubtitleIfAbsent(requestUrl) }
           }
-          StreamSniffer.classify(requestUrl)?.let { base ->
+          StreamSniffer.classifyDeep(requestUrl)?.let { base ->
           val headers = buildStreamHeaders(request, tab)
             view.post { tab.addSniffedStream(base.copy(headers = headers)) }
           }
