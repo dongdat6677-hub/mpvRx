@@ -1717,6 +1717,9 @@
   <string name="ui_web_browser_deny">Không cho phép</string>
   <string name="ui_web_browser_new_tab">New tab</string>
   <string name="ui_web_browser_close_tab">Close tab</string>
+  <string name="ui_web_browser_streams">Streams found</string>
+  <string name="ui_web_browser_streams_empty">No video streams detected on this page yet</string>
+  <string name="ui_web_browser_stream_ad_tag">possibly an ad</string>
   <string name="ui_enter_url">Enter URL</string>
   <string name="ui_unsupported_url_protocol">Unsupported URL protocol</string>
   <string name="ui_valid_url">Valid URL</string>
