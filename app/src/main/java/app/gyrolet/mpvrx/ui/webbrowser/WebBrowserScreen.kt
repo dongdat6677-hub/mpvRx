@@ -20,11 +20,18 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
@@ -45,11 +52,15 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
@@ -57,7 +68,6 @@ import app.gyrolet.mpvrx.domain.webbrowser.StreamSniffer
 import app.gyrolet.mpvrx.preferences.WebBrowserPreferences
 import app.gyrolet.mpvrx.preferences.preference.collectAsState
 import app.gyrolet.mpvrx.presentation.Screen
-import app.gyrolet.mpvrx.presentation.components.AppTextField as OutlinedTextField
 import app.gyrolet.mpvrx.ui.icons.Icon
 import app.gyrolet.mpvrx.ui.icons.Icons
 import app.gyrolet.mpvrx.ui.utils.LocalBackStack
@@ -74,8 +84,11 @@ import org.koin.java.KoinJavaComponent.inject
  *
  * Every request the active tab's WebView makes passes through the shared ad-block rule set
  * in `shouldInterceptRequest` inside [createWebView]; a blocked request never reaches the
- * network. A request that is *not* blocked is also classified by [StreamSniffer] (Phase 2) and,
- * if it looks like a video stream, added to that tab's [BrowserTabState.sniffedStreams].
+ * network. A request that is *not* blocked is also classified by [StreamSniffer] and, if it
+ * looks like a video stream, added to that tab's [BrowserTabState.sniffedStreams].
+ *
+ * The address bar + nav buttons live in a compact bottom toolbar that auto-hides on scroll-down
+ * and reappears on scroll-up, so the WebView gets nearly the full screen while browsing.
  */
 @Serializable
 object WebBrowserScreen : Screen {
@@ -96,6 +109,9 @@ object WebBrowserScreen : Screen {
     val activeTabId by viewModel.activeTabId
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
     var showStreamsSheet by remember { mutableStateOf(false) }
+    val toolbarVisible = remember { mutableStateOf(true) }
+
+    LaunchedEffect(activeTab.id) { toolbarVisible.value = true }
 
     val addressBarText by activeTab.addressBarText
     val isLoading by activeTab.isLoading
@@ -206,39 +222,6 @@ object WebBrowserScreen : Screen {
         onNewTab = { viewModel.addTab() },
       )
 
-      Row(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-      ) {
-        IconButton(onClick = { activeTab.webView?.goBack() }, enabled = canGoBack) {
-          Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null)
-        }
-        IconButton(onClick = { activeTab.webView?.goForward() }, enabled = canGoForward) {
-          Icon(Icons.RoundedFilled.ArrowForward, contentDescription = null)
-        }
-        OutlinedTextField(
-          value = addressBarText,
-          onValueChange = { activeTab.addressBarText.value = it },
-          modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-          singleLine = true,
-          placeholder = { Text(stringResource(R.string.ui_web_browser_url_hint)) },
-          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-          keyboardActions = KeyboardActions(onGo = { loadUrl(addressBarText) }),
-        )
-        IconButton(
-          onClick = { currentPageUrl?.let { viewModel.toggleBookmark(it, activeTab.pageTitle.value) } },
-          enabled = currentPageUrl != null,
-        ) {
-          Icon(
-            Icons.RoundedFilled.Bookmark,
-            contentDescription = null,
-            tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-          )
-        }
-      }
-
       if (isLoading) {
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
       }
@@ -260,11 +243,85 @@ object WebBrowserScreen : Screen {
               (existing.parent as? ViewGroup)?.removeView(existing)
               existing
             } else {
-              createWebView(ctx, activeTab, viewModel, adBlockRuleSetState, blockPopupsState, blockRedirectsState)
-                .also { activeTab.webView = it }
+              createWebView(
+                ctx,
+                activeTab,
+                viewModel,
+                adBlockRuleSetState,
+                blockPopupsState,
+                blockRedirectsState,
+                toolbarVisible,
+              ).also { activeTab.webView = it }
             }
           },
         )
+      }
+
+      AnimatedVisibility(visible = toolbarVisible.value) {
+        Row(
+          verticalAlignment = Alignment.CenterVertically,
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 8.dp, vertical = 4.dp),
+        ) {
+          IconButton(
+            onClick = { activeTab.webView?.goBack() },
+            enabled = canGoBack,
+            modifier = Modifier.size(32.dp),
+          ) {
+            Icon(Icons.RoundedFilled.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
+          }
+          IconButton(
+            onClick = { activeTab.webView?.goForward() },
+            enabled = canGoForward,
+            modifier = Modifier.size(32.dp),
+          ) {
+            Icon(Icons.RoundedFilled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+          }
+
+          Box(
+            modifier =
+              Modifier
+                .weight(1f)
+                .height(32.dp)
+                .padding(horizontal = 6.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp))
+                .padding(horizontal = 10.dp),
+            contentAlignment = Alignment.CenterStart,
+          ) {
+            if (addressBarText.isEmpty()) {
+              Text(
+                text = stringResource(R.string.ui_web_browser_url_hint),
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.secondary,
+              )
+            }
+            BasicTextField(
+              value = addressBarText,
+              onValueChange = { activeTab.addressBarText.value = it },
+              singleLine = true,
+              textStyle = TextStyle(fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface),
+              keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+              keyboardActions = KeyboardActions(onGo = { loadUrl(addressBarText) }),
+              cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+              modifier = Modifier.fillMaxWidth(),
+            )
+          }
+
+          IconButton(
+            onClick = { currentPageUrl?.let { viewModel.toggleBookmark(it, activeTab.pageTitle.value) } },
+            enabled = currentPageUrl != null,
+            modifier = Modifier.size(32.dp),
+          ) {
+            Icon(
+              Icons.RoundedFilled.Bookmark,
+              contentDescription = null,
+              modifier = Modifier.size(18.dp),
+              tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+            )
+          }
+        }
       }
 
       pendingNavigation?.let { pending ->
@@ -288,6 +345,8 @@ object WebBrowserScreen : Screen {
   }
 }
 
+private const val SCROLL_HIDE_THRESHOLD_PX = 12
+
 private fun createWebView(
   ctx: Context,
   tab: BrowserTabState,
@@ -295,6 +354,7 @@ private fun createWebView(
   adBlockRuleSetState: MutableState<AdBlockRuleSet>,
   blockPopupsState: MutableState<Boolean>,
   blockRedirectsState: MutableState<Boolean>,
+  toolbarVisibleState: MutableState<Boolean>,
 ): WebView =
   WebView(ctx).apply {
     layoutParams =
@@ -309,6 +369,14 @@ private fun createWebView(
     settings.domStorageEnabled = true
     settings.javaScriptCanOpenWindowsAutomatically = true
     settings.setSupportMultipleWindows(true)
+    // Requires API 23+ (minSdk for this app is well above that).
+    setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
+      if (scrollY > oldScrollY + SCROLL_HIDE_THRESHOLD_PX) {
+        toolbarVisibleState.value = false
+      } else if (scrollY < oldScrollY - SCROLL_HIDE_THRESHOLD_PX) {
+        toolbarVisibleState.value = true
+      }
+    }
     webViewClient =
       object : WebViewClient() {
         override fun shouldInterceptRequest(
