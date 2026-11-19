@@ -13,6 +13,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Message
 import android.view.ViewGroup
+import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -346,6 +347,32 @@ object WebBrowserScreen : Screen {
 }
 
 private const val SCROLL_HIDE_THRESHOLD_PX = 12
+/**
+ * Best-effort header set matching what the WebView itself would send for this request, so
+ * mpvRx can be handed the same User-Agent/Referer/Origin/Cookie/Authorization the site expects.
+ * Safe to call off the main thread: only reads [WebResourceRequest] (thread-safe by contract),
+ * [CookieManager] (explicitly thread-safe), and [tab]'s cached, non-WebView state.
+ */
+private fun buildStreamHeaders(
+  request: WebResourceRequest,
+  tab: BrowserTabState,
+): Map<String, String> {
+  val headers = LinkedHashMap<String, String>()
+  headers.putAll(request.requestHeaders)
+  tab.userAgent?.let { headers.putIfAbsent("User-Agent", it) }
+  val pageUrl = tab.pageUrl.value
+  if (pageUrl != null) {
+    headers.putIfAbsent("Referer", pageUrl)
+    runCatching { URI(pageUrl) }.getOrNull()?.let { uri ->
+      val portSuffix = if (uri.port != -1) ":${uri.port}" else ""
+      headers.putIfAbsent("Origin", "${uri.scheme}://${uri.host}$portSuffix")
+    }
+  }
+  CookieManager.getInstance().getCookie(request.url.toString())?.let { cookie ->
+    if (cookie.isNotBlank()) headers.putIfAbsent("Cookie", cookie)
+  }
+  return headers
+}
 
 private fun createWebView(
   ctx: Context,
@@ -369,6 +396,7 @@ private fun createWebView(
     settings.domStorageEnabled = true
     settings.javaScriptCanOpenWindowsAutomatically = true
     settings.setSupportMultipleWindows(true)
+    tab.userAgent = settings.userAgentString
     // Requires API 23+ (minSdk for this app is well above that).
     setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
       if (scrollY > oldScrollY + SCROLL_HIDE_THRESHOLD_PX) {
@@ -394,8 +422,9 @@ private fun createWebView(
               ByteArrayInputStream(ByteArray(0)),
             )
           }
-          StreamSniffer.classify(requestUrl)?.let { stream ->
-            view.post { tab.addSniffedStream(stream) }
+          StreamSniffer.classify(requestUrl)?.let { base ->
+            val headers = buildStreamHeaders(request, tab)
+            view.post { tab.addSniffedStream(base.copy(headers = headers)) }
           }
           return null
         }
