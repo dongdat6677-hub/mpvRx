@@ -124,7 +124,6 @@ object WebBrowserScreen : Screen {
       .collectAsState(initial = false)
     val pendingNavigation by viewModel.pendingNavigationConfirmation
     val sniffedStreams = activeTab.sniffedStreams
-    val vietnameseSubtitleUrl by activeTab.vietnameseSubtitleUrl
 
     val preferences by inject<WebBrowserPreferences>(WebBrowserPreferences::class.java)
     val blockAds by preferences.blockAds.collectAsState()
@@ -340,8 +339,7 @@ object WebBrowserScreen : Screen {
       BrowserStreamsSheet(
         isOpen = showStreamsSheet,
         pageUrl = currentPageUrl,
-        streams = sniffedStreams,
-        vietnameseSubtitleUrl = vietnameseSubtitleUrl,
+        tab = activeTab,
         onDismiss = { showStreamsSheet = false },
       )
     }
