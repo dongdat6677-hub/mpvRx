@@ -10,7 +10,10 @@ package app.gyrolet.mpvrx.ui.webbrowser
 
 import android.webkit.WebView
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import app.gyrolet.mpvrx.domain.webbrowser.SniffedStream
 import java.util.UUID
 
 /** One browser tab's state. [webView] is created lazily the first time the tab is shown. */
@@ -24,4 +27,19 @@ class BrowserTabState(val id: String = UUID.randomUUID().toString()) {
   val canGoForward: MutableState<Boolean> = mutableStateOf(false)
   val loadError: MutableState<String?> = mutableStateOf(null)
   val pendingHttpFallbackUrl: MutableState<String?> = mutableStateOf(null)
+
+  val sniffedStreams: SnapshotStateList<SniffedStream> = mutableStateListOf()
+  private val seenStreamUrls = mutableSetOf<String>()
+
+  fun addSniffedStream(stream: SniffedStream) {
+    if (seenStreamUrls.add(stream.url)) {
+      sniffedStreams.add(stream)
+    }
+  }
+
+  /** Called on every new page load — a stream sniffed on the previous page is no longer relevant. */
+  fun clearSniffedStreams() {
+    sniffedStreams.clear()
+    seenStreamUrls.clear()
+  }
 }
