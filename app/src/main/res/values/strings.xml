@@ -1722,6 +1722,7 @@
   <string name="ui_web_browser_stream_ad_tag">possibly an ad</string>
   <string name="ui_web_browser_play_via_ytdlp">Play via yt-dlp</string>
   <string name="ui_web_browser_resolving">Resolving…</string>
+  <string name="ui_web_browser_vi_subtitle_found">Đã tìm thấy phụ đề tiếng Việt — sẽ tự gửi kèm khi phát</string>
   <string name="ui_enter_url">Enter URL</string>
   <string name="ui_unsupported_url_protocol">Unsupported URL protocol</string>
   <string name="ui_valid_url">Valid URL</string>
