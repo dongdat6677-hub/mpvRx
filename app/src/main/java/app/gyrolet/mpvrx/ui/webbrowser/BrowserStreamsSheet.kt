@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import android.net.Uri
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.webbrowser.SniffedStream
 import app.gyrolet.mpvrx.domain.webbrowser.StreamSniffer
@@ -49,6 +50,7 @@ fun BrowserStreamsSheet(
   isOpen: Boolean,
   pageUrl: String?,
   streams: List<SniffedStream>,
+  vietnameseSubtitleUrl: String?,
   onDismiss: () -> Unit,
 ) {
   if (!isOpen) return
@@ -96,6 +98,14 @@ fun BrowserStreamsSheet(
         )
       }
 
+      if (vietnameseSubtitleUrl != null) {
+        Text(
+          text = stringResource(R.string.ui_web_browser_vi_subtitle_found),
+          color = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+      }
+
       if (sorted.isEmpty() && !isYoutube) {
         Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
           Text(
@@ -118,7 +128,13 @@ fun BrowserStreamsSheet(
               supportingContent = { Text(subtitle) },
               modifier =
                 Modifier.clickable {
-                  MediaUtils.playFile(stream.url, context, "webview_sniffer", headers = stream.headers)
+                  MediaUtils.playFile(
+                    stream.url,
+                    context,
+                    "webview_sniffer",
+                    headers = stream.headers,
+                    subtitles = vietnameseSubtitleUrl?.let { listOf(Uri.parse(it)) } ?: emptyList(),
+                  )
                   onDismiss()
               },
             )
