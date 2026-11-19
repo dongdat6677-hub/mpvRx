@@ -10,12 +10,17 @@ package app.gyrolet.mpvrx.domain.webbrowser
 
 enum class StreamType { HLS, DASH, PROGRESSIVE }
 
+enum class StreamVerification { PENDING, VERIFIED, FAILED }
+
 data class SniffedStream(
   val url: String,
   val type: StreamType,
   val qualityLabel: String?,
   val isLikelyAd: Boolean,
   val headers: Map<String, String> = emptyMap(),
+  val verification: StreamVerification = StreamVerification.PENDING,
+  val durationMs: Long? = null,
+  val bitrate: Long? = null,
 )
 
 object StreamSniffer {
@@ -57,5 +62,23 @@ object StreamSniffer {
     val lower = requestUrl.lowercase()
     if (SUBTITLE_EXTENSIONS.none { lower.contains(it) }) return false
     return VIETNAMESE_MARKER_REGEX.containsMatchIn(requestUrl)
+  }
+  private val DEEP_QUALITY_REGEX = Regex("(?i)(2160|1440|1080|720|480|360|240)p?")
+  private val DEEP_AD_KEYWORDS = listOf("/ads/", "adbreak", "vast", "doubleclick", "/ad/", "advert")
+  private val DEEP_MANIFEST_KEYWORDS = listOf("manifest", "playlist", "chunklist", "/hls/", "/dash/")
+  private val KNOWN_EXTENSION_REGEX = Regex("""\.(m3u8|mpd|mp4|webm|mkv)(\?|$)""")
+
+  /** Falls back to keyword detection for manifest-style URLs with no file extension (covers most iframe-embedded players). */
+  fun classifyDeep(requestUrl: String): SniffedStream? {
+    classify(requestUrl)?.let { return it }
+    val lower = requestUrl.lowercase()
+    if (KNOWN_EXTENSION_REGEX.containsMatchIn(lower)) return null
+    if (DEEP_MANIFEST_KEYWORDS.none { lower.contains(it) }) return null
+    return SniffedStream(
+      url = requestUrl,
+      type = StreamType.HLS,
+      qualityLabel = DEEP_QUALITY_REGEX.find(requestUrl)?.value,
+      isLikelyAd = DEEP_AD_KEYWORDS.any { lower.contains(it) },
+    )
   }
 }
