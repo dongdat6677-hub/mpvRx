@@ -118,9 +118,9 @@ fun BrowserStreamsSheet(
               supportingContent = { Text(subtitle) },
               modifier =
                 Modifier.clickable {
-                  MediaUtils.playFile(stream.url, context, "webview_sniffer")
+                  MediaUtils.playFile(stream.url, context, "webview_sniffer", headers = stream.headers)
                   onDismiss()
-                },
+              },
             )
           }
         }
