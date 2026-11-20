@@ -69,7 +69,10 @@ object StreamSniffer {
   private val KNOWN_EXTENSION_REGEX = Regex("""\.(m3u8|mpd|mp4|webm|mkv)(\?|$)""")
 
   /** Falls back to keyword detection for manifest-style URLs with no file extension (covers most iframe-embedded players). */
+  private val SEGMENT_FILENAME_REGEX = Regex("(?i)(^|/)(seg|segment|chunk|part|frag)[-_]?\\d+\\.")
+
   fun classifyDeep(requestUrl: String): SniffedStream? {
+    if (SEGMENT_FILENAME_REGEX.containsMatchIn(requestUrl)) return null
     classify(requestUrl)?.let { return it }
     val lower = requestUrl.lowercase()
     if (KNOWN_EXTENSION_REGEX.containsMatchIn(lower)) return null
