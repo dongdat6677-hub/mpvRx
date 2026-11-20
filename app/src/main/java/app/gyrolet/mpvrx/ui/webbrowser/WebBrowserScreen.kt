@@ -9,6 +9,7 @@
 package app.gyrolet.mpvrx.ui.webbrowser
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Message
@@ -23,6 +24,7 @@ import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +39,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -56,12 +60,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.adblock.AdBlockRuleSet
 import app.gyrolet.mpvrx.domain.webbrowser.StreamSniffer
@@ -87,8 +94,10 @@ import org.koin.java.KoinJavaComponent.inject
  * network. A request that is *not* blocked is also classified by [StreamSniffer] and, if it
  * looks like a video stream, added to that tab's [BrowserTabState.sniffedStreams].
  *
- * The address bar + nav buttons live in a compact bottom toolbar that auto-hides on scroll-down
- * and reappears on scroll-up, so the WebView gets nearly the full screen while browsing.
+ * Every control (nav, tab switcher, new tab, address bar, streams, bookmark/history/settings/
+ * reload via an overflow menu) lives in one compact bottom toolbar that auto-hides on
+ * scroll-down and reappears on scroll-up, so the WebView gets nearly the full screen. The
+ * system status bar is hidden while this screen is shown.
  */
 @Serializable
 object WebBrowserScreen : Screen {
@@ -100,6 +109,7 @@ object WebBrowserScreen : Screen {
   @Composable
   override fun Content() {
     val context = LocalContext.current
+    val view = LocalView.current
     val backStack = LocalBackStack.current
     val viewModel =
       remember {
@@ -109,9 +119,18 @@ object WebBrowserScreen : Screen {
     val activeTabId by viewModel.activeTabId
     val activeTab = tabs.firstOrNull { it.id == activeTabId } ?: tabs.first()
     var showStreamsSheet by remember { mutableStateOf(false) }
+    var showTabSwitcher by remember { mutableStateOf(false) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     val toolbarVisible = remember { mutableStateOf(true) }
 
     LaunchedEffect(activeTab.id) { toolbarVisible.value = true }
+
+    DisposableEffect(Unit) {
+      val window = (context as? Activity)?.window
+      val insetsController = window?.let { WindowCompat.getInsetsController(it, view) }
+      insetsController?.hide(WindowInsetsCompat.Type.statusBars())
+      onDispose { insetsController?.show(WindowInsetsCompat.Type.statusBars()) }
+    }
 
     val addressBarText by activeTab.addressBarText
     val isLoading by activeTab.isLoading
@@ -178,68 +197,6 @@ object WebBrowserScreen : Screen {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-      ) {
-        IconButton(onClick = { backStack.popSafely() }, modifier = Modifier.size(32.dp)) {
-          Icon(
-            Icons.RoundedFilled.ArrowBack,
-            contentDescription = stringResource(R.string.back),
-            tint = MaterialTheme.colorScheme.secondary,
-            modifier = Modifier.size(18.dp),
-          )
-        }
-        Box(modifier = Modifier.weight(1f))
-        IconButton(onClick = { showStreamsSheet = true }, modifier = Modifier.size(32.dp)) {
-          BadgedBox(
-            badge = { if (sniffedStreams.isNotEmpty()) Badge { Text(sniffedStreams.size.toString()) } },
-          ) {
-            Icon(
-              Icons.RoundedFilled.VideoLibrary,
-              contentDescription = stringResource(R.string.ui_web_browser_streams),
-              modifier = Modifier.size(18.dp),
-            )
-          }
-        }
-        IconButton(onClick = { backStack.navigateTo(BrowserHistoryScreen) }, modifier = Modifier.size(32.dp)) {
-          Icon(
-            Icons.RoundedFilled.History,
-            contentDescription = stringResource(R.string.ui_web_browser_history),
-            modifier = Modifier.size(18.dp),
-          )
-        }
-        IconButton(onClick = { backStack.navigateTo(BrowserBookmarksScreen) }, modifier = Modifier.size(32.dp)) {
-          Icon(
-            Icons.RoundedFilled.Bookmarks,
-            contentDescription = stringResource(R.string.ui_web_browser_bookmarks),
-            modifier = Modifier.size(18.dp),
-          )
-        }
-        IconButton(onClick = { backStack.navigateTo(BrowserSettingsScreen) }, modifier = Modifier.size(32.dp)) {
-          Icon(
-            Icons.RoundedFilled.Settings,
-            contentDescription = stringResource(R.string.ui_web_browser_settings),
-            modifier = Modifier.size(18.dp),
-          )
-        }
-        IconButton(onClick = { activeTab.webView?.reload() }, modifier = Modifier.size(32.dp)) {
-          Icon(Icons.RoundedFilled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-        }
-      }
-
-      BrowserTabBar(
-        tabs = tabs,
-        activeTabId = activeTabId,
-        onSelectTab = { viewModel.activeTabId.value = it },
-        onCloseTab = { viewModel.closeTab(it) },
-        onNewTab = { viewModel.addTab() },
-      )
-
-      if (isLoading) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-      }
-
       if (loadError != null) {
         Text(
           text = loadError.orEmpty(),
@@ -271,13 +228,27 @@ object WebBrowserScreen : Screen {
         )
       }
 
+      if (isLoading) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().height(2.dp))
+      }
+
+      if (showTabSwitcher) {
+        BrowserTabBar(
+          tabs = tabs,
+          activeTabId = activeTabId,
+          onSelectTab = {
+            viewModel.activeTabId.value = it
+            showTabSwitcher = false
+          },
+          onCloseTab = { viewModel.closeTab(it) },
+          onNewTab = { viewModel.addTab() },
+        )
+      }
+
       AnimatedVisibility(visible = toolbarVisible.value) {
         Row(
           verticalAlignment = Alignment.CenterVertically,
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 8.dp, vertical = 4.dp),
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         ) {
           IconButton(
             onClick = { activeTab.webView?.goBack() },
@@ -292,6 +263,20 @@ object WebBrowserScreen : Screen {
             modifier = Modifier.size(32.dp),
           ) {
             Icon(Icons.RoundedFilled.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+          }
+
+          Box(
+            modifier =
+              Modifier
+                .size(32.dp)
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp))
+                .clickable { showTabSwitcher = !showTabSwitcher },
+            contentAlignment = Alignment.Center,
+          ) {
+            Text(tabs.size.toString(), fontSize = 12.sp)
+          }
+          IconButton(onClick = { viewModel.addTab() }, modifier = Modifier.size(32.dp)) {
+            Text("+", fontSize = 18.sp)
           }
 
           Box(
@@ -323,17 +308,66 @@ object WebBrowserScreen : Screen {
             )
           }
 
-          IconButton(
-            onClick = { currentPageUrl?.let { viewModel.toggleBookmark(it, activeTab.pageTitle.value) } },
-            enabled = currentPageUrl != null,
-            modifier = Modifier.size(32.dp),
-          ) {
-            Icon(
-              Icons.RoundedFilled.Bookmark,
-              contentDescription = null,
-              modifier = Modifier.size(18.dp),
-              tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
-            )
+          IconButton(onClick = { showStreamsSheet = true }, modifier = Modifier.size(32.dp)) {
+            BadgedBox(
+              badge = { if (sniffedStreams.isNotEmpty()) Badge { Text(sniffedStreams.size.toString()) } },
+            ) {
+              Icon(
+                Icons.RoundedFilled.VideoLibrary,
+                contentDescription = stringResource(R.string.ui_web_browser_streams),
+                modifier = Modifier.size(18.dp),
+              )
+            }
+          }
+
+          Box {
+            IconButton(onClick = { showOverflowMenu = true }, modifier = Modifier.size(32.dp)) {
+              Text("⋮", fontSize = 18.sp)
+            }
+            DropdownMenu(expanded = showOverflowMenu, onDismissRequest = { showOverflowMenu = false }) {
+              DropdownMenuItem(
+                text = {
+                  Text(
+                    stringResource(
+                      if (isBookmarked) R.string.ui_web_browser_bookmark_remove else R.string.ui_web_browser_bookmark_add,
+                    ),
+                  )
+                },
+                enabled = currentPageUrl != null,
+                onClick = {
+                  currentPageUrl?.let { viewModel.toggleBookmark(it, activeTab.pageTitle.value) }
+                  showOverflowMenu = false
+                },
+              )
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.ui_web_browser_history)) },
+                onClick = {
+                  showOverflowMenu = false
+                  backStack.navigateTo(BrowserHistoryScreen)
+                },
+              )
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.ui_web_browser_bookmarks)) },
+                onClick = {
+                  showOverflowMenu = false
+                  backStack.navigateTo(BrowserBookmarksScreen)
+                },
+              )
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.ui_web_browser_settings)) },
+                onClick = {
+                  showOverflowMenu = false
+                  backStack.navigateTo(BrowserSettingsScreen)
+                },
+              )
+              DropdownMenuItem(
+                text = { Text(stringResource(R.string.ui_web_browser_reload)) },
+                onClick = {
+                  showOverflowMenu = false
+                  activeTab.webView?.reload()
+                },
+              )
+            }
           }
         }
       }
@@ -439,7 +473,7 @@ private fun createWebView(
             view.post { tab.setVietnameseSubtitleIfAbsent(requestUrl) }
           }
           StreamSniffer.classifyDeep(requestUrl)?.let { base ->
-          val headers = buildStreamHeaders(request, tab)
+            val headers = buildStreamHeaders(request, tab)
             view.post { tab.addSniffedStream(base.copy(headers = headers)) }
           }
           return null
