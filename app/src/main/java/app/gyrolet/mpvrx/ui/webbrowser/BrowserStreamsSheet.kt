@@ -33,17 +33,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.unit.dp
 import android.net.Uri
 import app.gyrolet.mpvrx.R
+import app.gyrolet.mpvrx.domain.webbrowser.StreamVerification
+import app.gyrolet.mpvrx.domain.webbrowser.StreamVerifier
+import app.gyrolet.mpvrx.domain.webbrowser.HlsPlaylistProbe
 import app.gyrolet.mpvrx.domain.webbrowser.SniffedStream
 import app.gyrolet.mpvrx.domain.webbrowser.StreamSniffer
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.LaunchedEffect
-import app.gyrolet.mpvrx.domain.webbrowser.StreamVerification
-import app.gyrolet.mpvrx.domain.webbrowser.StreamVerifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +65,27 @@ fun BrowserStreamsSheet(
     streams
       .filter { it.verification == StreamVerification.PENDING && !it.isLikelyAd }
       .forEach { stream ->
-        scope.launch { tab.updateStreamVerification(StreamVerifier.verify(stream)) }
+        scope.launch {
+          val updated =
+            if (stream.type == StreamType.HLS) {
+              when (val info = HlsPlaylistProbe.probe(stream.url, stream.headers)) {
+                null -> stream.copy(verification = StreamVerification.FAILED)
+                else ->
+                  if (info.isMaster || info.hasSegments) {
+                    stream.copy(
+                      verification = StreamVerification.VERIFIED,
+                      qualityLabel = info.bestResolution?.let(::resolutionToQualityLabel) ?: stream.qualityLabel,
+                      bitrate = info.bestBandwidthBps ?: stream.bitrate,
+                    )
+                  } else {
+                    stream.copy(verification = StreamVerification.FAILED)
+                  }
+              }
+            } else {
+              StreamVerifier.verify(stream)
+            }
+          tab.updateStreamVerification(updated)
+        }
       }
   }
   val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
@@ -115,10 +136,15 @@ fun BrowserStreamsSheet(
       } else if (sorted.isNotEmpty()) {
         LazyColumn {
           items(sorted) { stream ->
+            val streamHost = runCatching { Uri.parse(stream.url).host }.getOrNull()
+            val pageHost = runCatching { pageUrl?.let { Uri.parse(it).host } }.getOrNull()
+            val crossDomain = streamHost != null && pageHost != null &&
+              streamHost != pageHost && !streamHost.endsWith(".$pageHost")
             val details = buildList {
               add(stream.qualityLabel ?: stream.type.name)
               stream.durationMs?.let { add(formatStreamDuration(it)) }
               stream.bitrate?.let { add(formatStreamBitrate(it)) }
+              if (crossDomain) add(stringResource(R.string.ui_web_browser_stream_cross_domain))
               if (stream.isLikelyAd) add(stringResource(R.string.ui_web_browser_stream_ad_tag))
               add(
                 when (stream.verification) {
@@ -152,8 +178,18 @@ fun BrowserStreamsSheet(
 
 private fun streamDisplayName(url: String): String {
   val uri = Uri.parse(url)
-  val last = uri.lastPathSegment
-  return if (!last.isNullOrBlank()) last else (uri.host ?: url)
+  val last = uri.lastPathSegment?.takeIf { it.isNotBlank() }
+  val host = uri.host
+  return when {
+    host != null && last != null -> "$host/$last"
+    last != null -> last
+    else -> host ?: url
+  }
+}
+
+private fun resolutionToQualityLabel(resolution: String): String {
+  val height = resolution.substringAfter('x').toIntOrNull()
+  return if (height != null) "${height}p" else resolution
 }
 
 private fun formatStreamDuration(durationMs: Long): String {
