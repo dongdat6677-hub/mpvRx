@@ -2694,14 +2694,16 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     val context = applicationContext ?: return
     streamingOptionsApplied = true
 
-    // Use adaptive HLS bitrate selection to avoid forcing the heaviest stream profile.
-    // This reduces thermal load and helps prevent jitter/rebuffering on long sessions.
-    setPropertyString("hls-bitrate", "no")
+    // Always pick the highest-bitrate HLS/DASH variant available — sharpest quality over
+    // thermal/jitter safety, per user preference. Network-bound, not GPU-bound, so it does
+    // not add decode/render load at the same resolution.
+    setPropertyString("hls-bitrate", "max")
     setPropertyString("cookies", "yes")
     setPropertyString("cookies-file", AndroidCookieJar.playbackCookieFile(context).absolutePath)
     setPropertyString("cache", "auto")
     setPropertyString("cache-pause", "yes")
-    setPropertyString("demuxer-max-bytes", "64MiB")
+    // Do not force a buffer cap here — it silently overrode the user's own mpv.conf
+    // demuxer-max-bytes on every network load. Let mpv.conf (or mpv's own default) stand.
     setPropertyString("tls-verify", "yes")
     setPropertyString("tls-ca-file", "${context.filesDir.path}/cacert.pem")
     // Recover boundedly from transient HTTP/TLS disconnects, including non-seekable live inputs.
