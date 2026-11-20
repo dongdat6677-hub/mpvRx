@@ -129,7 +129,7 @@ jobs:
             name: Standard
             gradle: Standard
             dir: standard
-            abis: universal arm64-v8a armeabi-v7a x86 x86_64
+            abis: arm64-v8a
             asset: ''
           - id: fongmi
             name: FongMi
@@ -137,12 +137,6 @@ jobs:
             dir: fongmi
             abis: universal
             asset: fongmi
-          - id: no_vulkan
-            name: No Vulkan
-            gradle: NoVulkan
-            dir: noVulkan
-            abis: universal
-            asset: no-vulkan
     env:
       COMMIT_COUNT: ${{ needs.check.outputs.commit_count }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
@@ -335,13 +329,8 @@ jobs:
           publication_mode = os.environ["PUBLICATION_MODE"]
 
           public_names = [
-              "universal",
               "arm64-v8a",
-              "armeabi-v7a",
-              "x86",
-              "x86_64",
               "fongmi",
-              "no-vulkan",
           ]
           assets = []
 
