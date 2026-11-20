@@ -38,14 +38,12 @@ import android.net.Uri
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.webbrowser.SniffedStream
 import app.gyrolet.mpvrx.domain.webbrowser.StreamSniffer
-import app.gyrolet.mpvrx.preferences.YtdlPreferences
 import app.gyrolet.mpvrx.ui.player.ytdlp.YtdlpManager
 import app.gyrolet.mpvrx.utils.media.MediaUtils
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.LaunchedEffect
 import app.gyrolet.mpvrx.domain.webbrowser.StreamVerification
 import app.gyrolet.mpvrx.domain.webbrowser.StreamVerifier
-import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,12 +67,9 @@ fun BrowserStreamsSheet(
         scope.launch { tab.updateStreamVerification(StreamVerifier.verify(stream)) }
       }
   }
-  val ytdlPreferences = koinInject<YtdlPreferences>()
   val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
   val sorted = StreamSniffer.sortedByPreferredQuality(streams)
   val isYoutube = pageUrl != null && YtdlpManager.requiresYtdlp(pageUrl)
-  var isResolvingYoutube by remember { mutableStateOf(false) }
-  var youtubeError by remember { mutableStateOf<String?>(null) }
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -85,27 +80,10 @@ fun BrowserStreamsSheet(
       if (isYoutube && pageUrl != null) {
         ListItem(
           headlineContent = { Text(stringResource(R.string.ui_web_browser_play_via_ytdlp)) },
-          supportingContent = {
-            when {
-              isResolvingYoutube -> Text(stringResource(R.string.ui_web_browser_resolving))
-              youtubeError != null -> Text(youtubeError.orEmpty(), color = MaterialTheme.colorScheme.error)
-            }
-          },
           modifier =
-            Modifier.clickable(enabled = !isResolvingYoutube) {
-              isResolvingYoutube = true
-              youtubeError = null
-              scope.launch {
-                val result = YtdlpManager.extractPlaylist(context, pageUrl, ytdlPreferences)
-                isResolvingYoutube = false
-                result.fold(
-                  onSuccess = { playlist ->
-                    YtdlpManager.playPlaylist(context, playlist, "webview_sniffer")
-                    onDismiss()
-                  },
-                  onFailure = { error -> youtubeError = error.message },
-                )
-              }
+            Modifier.clickable {
+              MediaUtils.playFile(pageUrl, context, "webview_sniffer")
+              onDismiss()
             },
         )
       }
