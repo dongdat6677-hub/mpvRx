@@ -110,6 +110,15 @@ fun BrowserStreamsSheet(
         )
       }
 
+      if (!pageUrl.isNullOrBlank()) {
+        Text(
+          text = tab.pageTitle.value ?: pageUrl,
+          style = MaterialTheme.typography.titleSmall,
+          maxLines = 1,
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+      }
+
       if (vietnameseSubtitleUrl != null) {
         Text(
           text = stringResource(R.string.ui_web_browser_vi_subtitle_found),
