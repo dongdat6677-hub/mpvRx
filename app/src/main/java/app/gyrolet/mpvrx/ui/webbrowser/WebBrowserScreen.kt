@@ -42,7 +42,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -179,41 +178,55 @@ object WebBrowserScreen : Screen {
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-      TopAppBar(
-        title = { Text(stringResource(R.string.ui_web_browser)) },
-        navigationIcon = {
-          IconButton(onClick = { backStack.popSafely() }) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+      ) {
+        IconButton(onClick = { backStack.popSafely() }, modifier = Modifier.size(32.dp)) {
+          Icon(
+            Icons.RoundedFilled.ArrowBack,
+            contentDescription = stringResource(R.string.back),
+            tint = MaterialTheme.colorScheme.secondary,
+            modifier = Modifier.size(18.dp),
+          )
+        }
+        Box(modifier = Modifier.weight(1f))
+        IconButton(onClick = { showStreamsSheet = true }, modifier = Modifier.size(32.dp)) {
+          BadgedBox(
+            badge = { if (sniffedStreams.isNotEmpty()) Badge { Text(sniffedStreams.size.toString()) } },
+          ) {
             Icon(
-              Icons.RoundedFilled.ArrowBack,
-              contentDescription = stringResource(R.string.back),
-              tint = MaterialTheme.colorScheme.secondary,
+              Icons.RoundedFilled.VideoLibrary,
+              contentDescription = stringResource(R.string.ui_web_browser_streams),
+              modifier = Modifier.size(18.dp),
             )
           }
-        },
-        actions = {
-          IconButton(onClick = { showStreamsSheet = true }) {
-            BadgedBox(
-              badge = {
-                if (sniffedStreams.isNotEmpty()) Badge { Text(sniffedStreams.size.toString()) }
-              },
-            ) {
-              Icon(Icons.RoundedFilled.VideoLibrary, contentDescription = stringResource(R.string.ui_web_browser_streams))
-            }
-          }
-          IconButton(onClick = { backStack.navigateTo(BrowserHistoryScreen) }) {
-            Icon(Icons.RoundedFilled.History, contentDescription = stringResource(R.string.ui_web_browser_history))
-          }
-          IconButton(onClick = { backStack.navigateTo(BrowserBookmarksScreen) }) {
-            Icon(Icons.RoundedFilled.Bookmarks, contentDescription = stringResource(R.string.ui_web_browser_bookmarks))
-          }
-          IconButton(onClick = { backStack.navigateTo(BrowserSettingsScreen) }) {
-            Icon(Icons.RoundedFilled.Settings, contentDescription = stringResource(R.string.ui_web_browser_settings))
-          }
-          IconButton(onClick = { activeTab.webView?.reload() }) {
-            Icon(Icons.RoundedFilled.Refresh, contentDescription = null)
-          }
-        },
-      )
+        }
+        IconButton(onClick = { backStack.navigateTo(BrowserHistoryScreen) }, modifier = Modifier.size(32.dp)) {
+          Icon(
+            Icons.RoundedFilled.History,
+            contentDescription = stringResource(R.string.ui_web_browser_history),
+            modifier = Modifier.size(18.dp),
+          )
+        }
+        IconButton(onClick = { backStack.navigateTo(BrowserBookmarksScreen) }, modifier = Modifier.size(32.dp)) {
+          Icon(
+            Icons.RoundedFilled.Bookmarks,
+            contentDescription = stringResource(R.string.ui_web_browser_bookmarks),
+            modifier = Modifier.size(18.dp),
+          )
+        }
+        IconButton(onClick = { backStack.navigateTo(BrowserSettingsScreen) }, modifier = Modifier.size(32.dp)) {
+          Icon(
+            Icons.RoundedFilled.Settings,
+            contentDescription = stringResource(R.string.ui_web_browser_settings),
+            modifier = Modifier.size(18.dp),
+          )
+        }
+        IconButton(onClick = { activeTab.webView?.reload() }, modifier = Modifier.size(32.dp)) {
+          Icon(Icons.RoundedFilled.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+      }
 
       BrowserTabBar(
         tabs = tabs,
