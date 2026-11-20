@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import android.net.Uri
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.webbrowser.StreamVerification
+import app.gyrolet.mpvrx.domain.webbrowser.StreamType
 import app.gyrolet.mpvrx.domain.webbrowser.StreamVerifier
 import app.gyrolet.mpvrx.domain.webbrowser.HlsPlaylistProbe
 import app.gyrolet.mpvrx.domain.webbrowser.SniffedStream
