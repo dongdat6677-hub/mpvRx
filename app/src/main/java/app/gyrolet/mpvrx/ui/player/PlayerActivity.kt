@@ -676,7 +676,7 @@ class PlayerActivity :
       window.colorMode = ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
       // Compositor-level HDR passthrough — Android Window API, mpv.conf/Settings không chạm tới
       // được. Chỉ bật khi panel thật sự báo hỗ trợ HDR, nên không rủi ro trên màn hình SDR.
-      val hdrTypes = windowManager.defaultDisplay?.hdrCapabilities?.supportedHdrTypes
+      val hdrTypes = windowManager.defaultDisplay?.supportedHdrTypes
       if (!hdrTypes.isNullOrEmpty()) {
         window.colorMode = ActivityInfo.COLOR_MODE_HDR
       }
