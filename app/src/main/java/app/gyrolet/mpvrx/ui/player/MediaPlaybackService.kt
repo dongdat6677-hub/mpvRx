@@ -1974,11 +1974,21 @@ class MediaPlaybackService :
     data: MPVNode,
   ) {
     if (eventId == MPVLib.MpvEvent.MPV_EVENT_SHUTDOWN) {
-      Log.d(TAG, "MPV shutdown event received, stopping service")
-      savePlaybackStateNow()
-      stopSelf()
-      return
+  Log.d(TAG, "MPV shutdown event received, stopping service")
+  savePlaybackStateNow()
+
+  persistenceScope.launch {
+    val restored =
+      GpuPerformanceController(applicationContext).restoreOriginalLimits()
+
+    if (!restored) {
+      Log.e(TAG, "Failed to restore original GPU frequency limits after MPV shutdown")
     }
+  }
+
+  stopSelf()
+  return
+}
 
     if (eventId == MPVLib.MpvEvent.MPV_EVENT_END_FILE) {
       if (PlaybackSession.isNaturalEndFile(data)) {
