@@ -6,6 +6,9 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 internal class GpuPerformanceController(context: Context) {
 
@@ -15,9 +18,16 @@ internal class GpuPerformanceController(context: Context) {
       Context.MODE_PRIVATE,
     )
 
-  suspend fun enableMaxPerformance(): Boolean =
+  suspend fun enableMaxPerformance(expectedGeneration: Long): Boolean =
     withContext(Dispatchers.IO) {
       synchronized(lock) {
+        if (playbackGeneration != expectedGeneration) {
+  Log.d(
+    TAG,
+    "Ignoring stale GPU activation request: expected=$expectedGeneration, current=$playbackGeneration",
+  )
+  return@synchronized false
+        }
         runCatching {
           val saved = preferences.getBoolean(KEY_ACTIVE, false)
           val savedPid = preferences.getInt(KEY_PID, -1)
@@ -107,6 +117,34 @@ internal class GpuPerformanceController(context: Context) {
       }
     }
 
+    fun updatePlaybackGeneration(generation: Long) {
+  synchronized(lock) {
+    if (generation > playbackGeneration) {
+      playbackGeneration = generation
+      Log.d(TAG, "Playback generation updated: $generation")
+    }
+  }
+    }
+
+    fun requestRestoreForStoppedGeneration(expectedGeneration: Long) {
+  restorationScope.launch {
+    synchronized(lock) {
+      if (playbackGeneration != expectedGeneration) {
+        Log.d(
+          TAG,
+          "Skipping stale GPU restoration: expected=$expectedGeneration, current=$playbackGeneration",
+        )
+        return@synchronized
+      }
+
+      runCatching { restoreLocked() }
+        .onFailure {
+          Log.e(TAG, "GPU restoration failed", it)
+        }
+    }
+  }
+    }
+    
   suspend fun restoreOriginalLimits(): Boolean =
     withContext(Dispatchers.IO) {
       synchronized(lock) {
@@ -186,6 +224,12 @@ internal class GpuPerformanceController(context: Context) {
 
   private companion object {
     private val lock = Any()
+
+private val restorationScope =
+  CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+@Volatile
+private var playbackGeneration = 0L
     const val TAG = "GpuPerformanceController"
     const val PREFS_NAME = "gpu_performance_controller"
 
