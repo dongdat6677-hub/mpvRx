@@ -15,8 +15,6 @@ internal class GpuPerformanceController(context: Context) {
       Context.MODE_PRIVATE,
     )
 
-  private val lock = Any()
-
   suspend fun enableMaxPerformance(): Boolean =
     withContext(Dispatchers.IO) {
       synchronized(lock) {
@@ -187,6 +185,7 @@ internal class GpuPerformanceController(context: Context) {
   }
 
   private companion object {
+    private val lock = Any()
     const val TAG = "GpuPerformanceController"
     const val PREFS_NAME = "gpu_performance_controller"
 
