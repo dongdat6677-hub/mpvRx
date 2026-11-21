@@ -464,6 +464,11 @@ class PlayerActivity :
   private var isInBackgroundPlayback = false // Track if we are currently in background playback mode
   private var screenStateReceiverRegistered = false
   private var mpvInitialized = false // Track MPV initialization state
+  private val gpuPerformanceController by lazy(LazyThreadSafetyMode.NONE) {
+    GpuPerformanceController(applicationContext)
+  }
+
+  private var gpuPerformanceRequested = false
   private var viewModelHostAttached = false
   private var torrentPickerHandoff = false
   private var savePlaybackStateJob: Job? = null // Track ongoing save job
@@ -707,9 +712,6 @@ class PlayerActivity :
     if (hdrTypes != null && hdrTypes.isNotEmpty()) {
         window.colorMode = ActivityInfo.COLOR_MODE_HDR
       }
-    }
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-      window.setSustainedPerformanceMode(true)
     }
     // A fresh launch drops the rotation picked for the previous session; re-entry keeps it.
     if (savedInstanceState == null && intent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) {
@@ -2024,11 +2026,43 @@ class PlayerActivity :
       .onFailure { e -> Log.e(TAG, "Error releasing MPV surface", e) }
   }
 
+  private fun updateGpuPerformanceForPlayback() {
+    val state = PlaybackSession.state.value
+
+    val isPlaying =
+        mpvInitialized &&
+        ownsPlaybackSession() &&
+        state.currentItem != null &&
+        !state.paused
+
+    // Sustained Performance Mode chỉ bật khi đang phát.
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        window.setSustainedPerformanceMode(isPlaying)
+    }
+
+    if (isPlaying && !gpuPerformanceRequested) {
+        gpuPerformanceRequested = true
+
+        lifecycleScope.launch {
+            val success = gpuPerformanceController.enableMaxPerformance()
+
+            if (!success) {
+                gpuPerformanceRequested = false
+                Log.e(TAG, "GPU maximum performance request failed")
+            }
+        }
+    } else if (!isPlaying) {
+        // Không khôi phục xung GPU khi tạm dừng hoặc dừng video.
+        gpuPerformanceRequested = false
+    }
+  }
+  
   private fun observePlaybackSessionQueue() {
     lifecycleScope.launch {
-      PlaybackSession.state.collect {
-        finishStoppedBackgroundPlaybackIfNeeded()
-      }
+        PlaybackSession.state.collect {
+            updateGpuPerformanceForPlayback()
+            finishStoppedBackgroundPlaybackIfNeeded()
+        }
     }
     lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -2560,6 +2594,9 @@ class PlayerActivity :
       return
     }
     if (!mpvInitialized) return
+
+      updateGpuPerformanceForPlayback()
+
     if (finishStoppedBackgroundPlaybackIfNeeded()) return
     MediaPlaybackService.activityForeground = !isDeviceScreenOffOrLocked()
 
@@ -3949,6 +3986,9 @@ class PlayerActivity :
 
   private fun onPlaybackResumed() {
     if (!mpvInitialized || !ownsPlaybackSession()) return
+
+    updateGpuPerformanceForPlayback()
+
     if (!isInPictureInPictureMode && hasWindowFocus()) completePipExpansion()
     restoreForegroundVideoAndAmbientIfUnlocked()
     updateVolume()
