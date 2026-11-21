@@ -23,6 +23,15 @@ function(mpvrx_optimize_native_target target)
     target_link_options(${target} PRIVATE ${MPVRX_NATIVE_LINK_OPTIONS})
 endfunction()
 
+# Native bridge for setting the video Surface dataspace.
+add_library(mpvrx_dataspace SHARED dataspace_bridge.cpp)
+
+target_link_libraries(
+    mpvrx_dataspace
+    PRIVATE
+    android
+)
+
 # Both targets exist only for yt-dlp. Gradle turns this off for flavors without yt-dlp (Play).
 option(MPVRX_ENABLE_YTDLP "Build the yt-dlp helper executables" ON)
 if(NOT MPVRX_ENABLE_YTDLP)
