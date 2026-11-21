@@ -674,6 +674,12 @@ class PlayerActivity :
   override fun onCreate(savedInstanceState: Bundle?) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       window.colorMode = ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
+      // Compositor-level HDR passthrough — Android Window API, mpv.conf/Settings không chạm tới
+      // được. Chỉ bật khi panel thật sự báo hỗ trợ HDR, nên không rủi ro trên màn hình SDR.
+      val hdrTypes = windowManager.defaultDisplay?.hdrCapabilities?.supportedHdrTypes
+      if (!hdrTypes.isNullOrEmpty()) {
+        window.colorMode = ActivityInfo.COLOR_MODE_HDR
+      }
     }
     // A fresh launch drops the rotation picked for the previous session; re-entry keeps it.
     if (savedInstanceState == null && intent.action != MediaPlaybackService.ACTION_OPEN_PLAYER) {
