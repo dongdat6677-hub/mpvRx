@@ -165,12 +165,23 @@ internal class GpuPerformanceController(context: Context) {
       .redirectErrorStream(true)
       .start()
 
-    val output = process.inputStream.bufferedReader().use { it.readText() }
+    val completed = process.waitFor(15, TimeUnit.SECONDS)
 
-    if (!process.waitFor(15, TimeUnit.SECONDS)) {
+    if (!completed) {
       process.destroyForcibly()
-      return -1 to "Root command timed out"
+      runCatching {
+        process.waitFor(1, TimeUnit.SECONDS)
+      }
+      runCatching { process.inputStream.close() }
+      runCatching { process.errorStream.close() }
+      runCatching { process.outputStream.close() }
+
+      return -1 to "Root command timed out after 15 seconds"
     }
+
+    val output = process.inputStream
+      .bufferedReader()
+      .use { it.readText() }
 
     return process.exitValue() to output
   }
