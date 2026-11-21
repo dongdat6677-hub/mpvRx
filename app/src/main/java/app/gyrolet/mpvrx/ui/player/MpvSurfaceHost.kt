@@ -183,6 +183,8 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
       }
     } else {
       SurfaceView(context).apply {
+        setZOrderMediaOverlay(true)
+     
         holder.addCallback(object : SurfaceHolder.Callback {
           override fun surfaceCreated(holder: SurfaceHolder) {
             available(holder.surface, this@apply.width, this@apply.height, owned = false)
