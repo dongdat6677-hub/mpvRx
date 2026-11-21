@@ -671,6 +671,33 @@ class PlayerActivity :
   override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) =
     startForResultOrToast(intent, requestCode) { target -> super.startActivityForResult(target, requestCode, options) }
 
+  @Suppress("DEPRECATION")
+  private fun request120HzDisplayMode() {
+  if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+
+  val display = windowManager.defaultDisplay
+  val mode =
+    display.supportedModes
+      .filter { it.refreshRate >= 119f && it.refreshRate <= 121f }
+      .maxByOrNull { it.physicalWidth.toLong() * it.physicalHeight.toLong() }
+
+  if (mode == null) {
+    Log.w(TAG, "120Hz display mode unavailable; keeping system-selected mode")
+    return
+   }
+
+  val params = window.attributes
+  params.preferredDisplayModeId = mode.modeId
+  window.attributes = params
+
+  Log.i(
+    TAG,
+    "Requested 120Hz display mode: id=${mode.modeId}, " +
+      "size=${mode.physicalWidth}x${mode.physicalHeight}, " +
+      "refresh=${mode.refreshRate}Hz",
+      )
+    }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
       window.colorMode = ActivityInfo.COLOR_MODE_WIDE_COLOR_GAMUT
@@ -694,6 +721,7 @@ class PlayerActivity :
     }
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
+    request120HzDisplayMode()
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !isKnownAudioLaunch(intent)) {
       applyLegacySystemBars(showStatus = false, showNavigation = false, isAudio = false)
     }
