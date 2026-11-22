@@ -267,22 +267,22 @@ if (TARGET_FREQ !in availableFrequencies) {
     }
 
     val metadataCleared = preferences.edit()
-  .remove(KEY_ACTIVE)
-  .remove(KEY_PID)
-  .remove(KEY_ORIGINAL_MIN)
-  .remove(KEY_ORIGINAL_MAX)
-  .commit()
+    .remove(KEY_ACTIVE)
+    .remove(KEY_PID)
+    .remove(KEY_ORIGINAL_MIN)
+    .remove(KEY_ORIGINAL_MAX)
+    .commit()
 
-if (!metadataCleared) {
-  Log.e(
-    TAG,
-    "GPU limits restored, but saved session metadata could not be cleared",
+    if (!metadataCleared) {
+     Log.e(
+      TAG,
+       "GPU limits restored, but saved session metadata could not be cleared",
   )
   return false
-}
+  }
 
-Log.i(TAG, "Original GPU limits restored")
-return true
+  Log.i(TAG, "Original GPU limits restored")
+  return true
   }
 
   private fun runRoot(script: String): Pair<Int, String> {
