@@ -112,9 +112,6 @@ class MotionInterpolationController(
         preferences.motionInterpolationSwitchDisplayRate.changes(),
         // Leaving GPU Next + Vulkan switches motion interpolation off.
         preferences.gpuNext.changes(),
-        preferences.useVulkan.changes(),
-        preferences.hdrScreenOutput.changes(),
-        preferences.hdrScreenMode.changes(),
       )
     scope.launch {
       // The first combination is the stored state, which MPVView applied before the core started.
