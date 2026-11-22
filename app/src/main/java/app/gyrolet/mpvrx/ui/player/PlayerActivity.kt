@@ -469,6 +469,7 @@ class PlayerActivity :
   }
 
   private var gpuPerformanceRequested = false
+  private var gpuPerformanceRequestedGeneration = -1L
   private var viewModelHostAttached = false
   private var torrentPickerHandoff = false
   private var savePlaybackStateJob: Job? = null // Track ongoing save job
@@ -2027,33 +2028,42 @@ class PlayerActivity :
   }
 
   private fun updateGpuPerformanceForPlayback() {
-    val state = PlaybackSession.state.value
+  val state = PlaybackSession.state.value
+  val expectedGeneration = state.generation
 
-    val isPlaying =
-        mpvInitialized &&
-        ownsPlaybackSession() &&
-        state.currentItem != null &&
-        !state.paused
+  val isPlaying =
+    mpvInitialized &&
+      ownsPlaybackSession() &&
+      state.currentItem != null &&
+      !state.paused
 
-    // Sustained Performance Mode chỉ bật khi đang phát.
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        window.setSustainedPerformanceMode(isPlaying)
-    }
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+    window.setSustainedPerformanceMode(isPlaying)
+  }
 
-    if (isPlaying && !gpuPerformanceRequested) {
-        gpuPerformanceRequested = true
+  // A new media generation must not inherit an old activation request.
+  if (gpuPerformanceRequestedGeneration != expectedGeneration) {
+    gpuPerformanceRequestedGeneration = expectedGeneration
+    gpuPerformanceRequested = false
+  }
 
-        lifecycleScope.launch {
-            val success = gpuPerformanceController.enableMaxPerformance()
+  if (isPlaying && !gpuPerformanceRequested) {
+    gpuPerformanceRequested = true
 
-            if (!success) {
-                gpuPerformanceRequested = false
-                Log.e(TAG, "GPU maximum performance request failed")
-            }
-        }
-    } else if (!isPlaying) {
-        // Không khôi phục xung GPU khi tạm dừng hoặc dừng video.
+    lifecycleScope.launch {
+      val success =
+        gpuPerformanceController.enableMaxPerformance(expectedGeneration)
+
+      if (!success &&
+        PlaybackSession.state.value.generation == expectedGeneration
+      ) {
         gpuPerformanceRequested = false
+        Log.e(TAG, "GPU maximum performance request failed")
+      }
+    }
+  } else if (!isPlaying) {
+    // Pausing playback does not restore the original GPU limits.
+    gpuPerformanceRequested = false
     }
   }
   
