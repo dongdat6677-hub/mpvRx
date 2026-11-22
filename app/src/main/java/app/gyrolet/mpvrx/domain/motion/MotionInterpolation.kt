@@ -150,12 +150,10 @@ fun isRendererSelected(preferences: DecoderPreferences): Boolean =
   fun barrier(
     context: Context,
     preferences: DecoderPreferences,
-  ): MotionAvailability =
+): MotionAvailability =
     when {
       !isBuildSupported -> MotionAvailability.UNSUPPORTED_BUILD
-      !isDeviceSupported(context) -> MotionAvailability.UNSUPPORTED_DEVICE
       !isRendererSelected(preferences) -> MotionAvailability.NEEDS_RENDERER
-      MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT) -> MotionAvailability.HDR_CONFIG_OWNED
       else -> MotionAvailability.READY
     }
 
