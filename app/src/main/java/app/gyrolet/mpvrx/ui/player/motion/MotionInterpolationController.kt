@@ -85,8 +85,6 @@ class MotionInterpolationController(
     )
   val state: StateFlow<MotionUiState> = _state.asStateFlow()
 
-  // The video-sync mode that was active before motion interpolation needed display sync.
-  private var savedVideoSync: String? = null
   private var applyJob: Job? = null
 
   // A preference change re-runs apply() and cancels the previous run, so keep its toast pending.
@@ -109,7 +107,7 @@ class MotionInterpolationController(
         preferences.motionInterpolationMode.changes(),
         preferences.motionInterpolationTargetFps.changes(),
         preferences.motionInterpolationSwitchDisplayRate.changes(),
-        // Leaving GPU Next + Vulkan switches motion interpolation off.
+        // Leaving GPU Next switches motion interpolation off.
         preferences.gpuNext.changes(),
       )
     scope.launch {
@@ -170,7 +168,7 @@ class MotionInterpolationController(
       scope.launch {
         val barrier = MotionInterpolation.barrier(context, preferences)
         if (barrier.blocksEnabling && preferences.motionInterpolationEnabled.get()) {
-          // Turning off GPU Next or Vulkan also turns motion interpolation off.
+          // Turning off GPU Next also turns motion interpolation off.
           preferences.motionInterpolationEnabled.set(false)
           announcePending = false
           barrier.messageRes?.let { showText(context.getString(it)) }
@@ -224,7 +222,7 @@ class MotionInterpolationController(
     MotionInterpolation.appApplied = true
   }
 
-  /** Undoes only what mpvRx applied, restoring the sync mode that was active before it. */
+  /** Stops only the motion option applied by mpvRx. */
   private fun stop() {
     setOption(MotionInterpolation.OPTION, "0")
     // Null when startup applied it before this controller existed; then the app default applies.
