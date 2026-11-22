@@ -84,7 +84,7 @@ android {
 
   defaultConfig {
     applicationId = "app.gyrolet.mpvrx"
-    minSdk = 26
+    minSdk = 35
     targetSdk = 36
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // Stable occupies the top of its version band. Preview uses the next band's commit-count
