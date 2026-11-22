@@ -117,6 +117,36 @@ internal class GpuPerformanceController(context: Context) {
       }
     }
 
+ suspend fun recoverStaleSession(): Boolean =
+   withContext(Dispatchers.IO) {
+     synchronized(lock) {
+      if (!preferences.getBoolean(KEY_ACTIVE, false)) {
+        return@synchronized true
+      }
+
+      val savedPid = preferences.getInt(KEY_PID, -1)
+
+      if (savedPid == Process.myPid()) {
+        Log.d(
+          TAG,
+          "GPU session belongs to current process; recovery skipped",
+        )
+        return@synchronized true
+      }
+
+      Log.w(
+        TAG,
+        "Recovering stale GPU session from previous process: pid=$savedPid",
+      )
+
+      runCatching {
+        restoreLocked()
+      }.onFailure {
+        Log.e(TAG, "Stale GPU session recovery failed", it)
+      }.getOrDefault(false)
+    }
+  }
+    
     fun updatePlaybackGeneration(generation: Long) {
   synchronized(lock) {
     if (generation > playbackGeneration) {
