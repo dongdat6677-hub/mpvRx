@@ -142,9 +142,9 @@ object MotionInterpolation {
   fun isDeviceSupported(context: Context): Boolean =
     deviceSupported ?: VulkanCapabilities.isDeviceSupported(context).also { deviceSupported = it }
 
-  /** Like FongMi's own player, motion interpolation runs on gpu-next with Vulkan. */
-  fun isRendererSelected(preferences: DecoderPreferences): Boolean =
-    preferences.gpuNext.get() && preferences.useVulkan.get()
+  /** Motion interpolation requires GPU Next; Vulkan is not a mandatory backend. */
+fun isRendererSelected(preferences: DecoderPreferences): Boolean =
+    preferences.gpuNext.get()
 
   /** The first unmet hard requirement, or [MotionAvailability.READY]. */
   fun barrier(
