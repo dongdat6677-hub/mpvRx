@@ -158,7 +158,6 @@ class MotionInterpolationController(
     }
     announcePending = true
     if (preferences.motionInterpolationEnabled.get() == enabled) {
-      if (enabled) MotionInterpolation.ensureHdrEnabled(preferences)
       apply()
     } else {
       // The preference observer runs apply() and shows the pending toast.
@@ -178,7 +177,6 @@ class MotionInterpolationController(
           barrier.messageRes?.let { showText(context.getString(it)) }
         }
 
-        MotionInterpolation.ensureHdrEnabled(preferences)
         val config = MotionInterpolation.config(preferences)
         val coreReady = PlaybackSession.getPropertyString("mpv-version") != null
         val optionKnown =
