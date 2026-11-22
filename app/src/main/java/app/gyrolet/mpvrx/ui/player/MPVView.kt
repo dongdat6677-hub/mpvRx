@@ -791,19 +791,37 @@ class MPVView(
     MotionInterpolation.isBuildSupported && (PlaybackSession.getPropertyInt(MotionInterpolation.OPTION) ?: 0) > 0
 
   /** mpv cannot query Android's refresh rate; keep display sync in step with mode switches. */
-  private val displayListener =
-    object : DisplayManager.DisplayListener {
-      override fun onDisplayAdded(displayId: Int) = Unit
+  private val displayListener = object : DisplayManager.DisplayListener {
 
-      override fun onDisplayRemoved(displayId: Int) = Unit
+    override fun onDisplayAdded(displayId: Int) = Unit
 
-      override fun onDisplayChanged(displayId: Int) {
-        if (displayId != Display.DEFAULT_DISPLAY || isExiting || !isMotionInterpolationRunning()) return
-        MotionInterpolation.displayFpsOverride(context)?.let {
-          PlaybackSession.setOptionString("display-fps-override", it)
+    override fun onDisplayRemoved(displayId: Int) = Unit
+
+    override fun onDisplayChanged(displayId: Int) {
+        if (displayId != Display.DEFAULT_DISPLAY || isExiting) return
+
+        val displayManager =
+            context.getSystemService(DisplayManager::class.java) ?: return
+
+        val display = displayManager.getDisplay(displayId) ?: return
+        val mode = display.mode
+
+        Log.i(
+            TAG,
+            "Display changed: actualRefresh=${display.refreshRate}Hz, " +
+                "modeId=${mode.modeId}, " +
+                "resolution=${mode.physicalWidth}x${mode.physicalHeight}"
+        )
+
+        // Preserve the legacy Motion Interpolation display-FPS update.
+        // This does not modify mpv.conf interpolation, video-sync or tscale.
+        if (isMotionInterpolationRunning()) {
+            MotionInterpolation.displayFpsOverride(context)?.let {
+                PlaybackSession.setOptionString("display-fps-override", it)
+            }
         }
-      }
     }
+}
 
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
