@@ -17,6 +17,7 @@ Java_app_gyrolet_mpvrx_ui_player_NativeDataspace_setSurfaceDataspace(
     }
 
     ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
+
     if (window == nullptr) {
         return -EINVAL;
     }
@@ -25,5 +26,6 @@ Java_app_gyrolet_mpvrx_ui_player_NativeDataspace_setSurfaceDataspace(
         ANativeWindow_setBuffersDataSpace(window, dataspace);
 
     ANativeWindow_release(window);
+
     return result;
 }
