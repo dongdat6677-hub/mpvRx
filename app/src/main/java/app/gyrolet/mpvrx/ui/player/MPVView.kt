@@ -646,7 +646,7 @@ class MPVView(
     const val DEFAULT_OSD_SAFE_MARGIN = 16
     const val SURFACE_RETRY_MS = 250L
     const val SURFACE_READY_TIMEOUT_MS = 5_000L
-    TARGET_SURFACE_FRAME_RATE = 120f
+    const val TARGET_SURFACE_FRAME_RATE = 120f
   }
 
   @Suppress("ReturnCount", "DEPRECATION")
