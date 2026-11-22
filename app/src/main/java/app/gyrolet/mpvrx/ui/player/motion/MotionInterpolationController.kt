@@ -193,12 +193,11 @@ class MotionInterpolationController(
             !optionKnown -> MotionAvailability.UNSUPPORTED_LIBMPV
             configOwned -> MotionAvailability.CONFIG_OWNED
             !isRendererRunning() -> MotionAvailability.RENDERER_RESTART
-            !isDisplaySyncAllowed() -> MotionAvailability.NEEDS_DISPLAY_SYNC
             isGpuUnsupported() -> MotionAvailability.UNSUPPORTED_GPU
             else -> MotionAvailability.READY
           }
 
-        val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY && requireHdrOutput()
+        val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY
         if (optionKnown && !configOwned) {
           if (shouldRun) {
             if (!running) savedVideoSync = PlaybackSession.getPropertyString("video-sync")
