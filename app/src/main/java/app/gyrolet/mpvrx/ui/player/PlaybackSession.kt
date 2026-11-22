@@ -957,6 +957,14 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   private fun destroyLocked(nativeShutdown: Boolean = false) {
     val nextGeneration = _state.value.generation + 1L
+    
+    applicationContext?.let { context ->
+      val gpuController = GpuPerformanceController(context)
+
+    gpuController.updatePlaybackGeneration(nextGeneration)
+    gpuController.requestRestoreForStoppedGeneration(nextGeneration)
+    }
+    
     if (!nativeShutdown) AudiobookPlayback.capture()
     loadedPlaybackItem = null
     speedBeforeAudiobook = null
