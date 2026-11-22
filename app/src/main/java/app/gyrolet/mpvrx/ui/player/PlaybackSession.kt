@@ -785,6 +785,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       }
 
       val nextGeneration = _state.value.generation + 1L
+
+      applicationContext?.let { context ->
+        GpuPerformanceController(context).updatePlaybackGeneration(nextGeneration)
+      }
+      
       supersededStopGeneration = 0L
       suspendedVideoTrack = null
       deferredVideoSelectionGeneration = null
@@ -879,23 +884,37 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
 
   private fun finalizeStopLocked() {
-    if (pendingStopClearQueue) _queue.value = PlaybackQueueState()
-    pendingStopClearQueue = false
-    supersededStopGeneration = 0L
-    releaseActiveNetworkStreamLocked()
-    releaseAuxiliaryNetworkStreamsLocked()
-    updateState {
-      it.copy(
-        phase = PlaybackPhase.IDLE,
-        activeGeneration = 0L,
-        paused = true,
-        currentItem = _queue.value.currentItem,
-        error = null,
-      )
+  val completedGeneration =
+    _state.value.generation.takeIf {
+      _state.value.phase == PlaybackPhase.STOPPING
     }
-    propBoolean.emit("pause", true)
-    clearTimelinePropertiesLocked()
+
+  if (pendingStopClearQueue) _queue.value = PlaybackQueueState()
+  pendingStopClearQueue = false
+  supersededStopGeneration = 0L
+  releaseActiveNetworkStreamLocked()
+  releaseAuxiliaryNetworkStreamsLocked()
+
+  updateState {
+    it.copy(
+      phase = PlaybackPhase.IDLE,
+      activeGeneration = 0L,
+      paused = true,
+      currentItem = _queue.value.currentItem,
+      error = null,
+    )
   }
+
+  propBoolean.emit("pause", true)
+  clearTimelinePropertiesLocked()
+
+  completedGeneration?.let { generation ->
+    applicationContext?.let { context ->
+      GpuPerformanceController(context)
+        .requestRestoreForStoppedGeneration(generation)
+    }
+  }
+}
 
   /**
     * Destroys a core that must not be reused, including process shutdown and an unrecoverable
@@ -1270,6 +1289,11 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       beginPlaybackTransitionAudioGuardLocked(canRestore = true)
 
       val generation = _state.value.generation + 1L
+
+      applicationContext?.let { context ->
+        GpuPerformanceController(context).updatePlaybackGeneration(generation)
+      }
+      
       val initialPosition = initialPositionSeconds?.takeIf { it.isFinite() && it > 0.0 }
       pendingPositionRestoreGeneration =
         generation.takeIf {
