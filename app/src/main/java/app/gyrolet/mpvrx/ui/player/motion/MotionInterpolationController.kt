@@ -129,11 +129,10 @@ class MotionInterpolationController(
     setEnabled(!preferences.motionInterpolationEnabled.get())
   }
 
-  /** Selects GPU Next with Vulkan, which the motion core renders through; applies on reopen. */
+  /** Selects GPU Next; the active GPU API remains user-controlled. */
   fun enableRequiredRenderer() {
-    if (!MotionInterpolation.isBuildSupported || !MotionInterpolation.isDeviceSupported(context)) return
+    if (!MotionInterpolation.isBuildSupported) return
     preferences.gpuNext.set(true)
-    preferences.useVulkan.set(true)
     showText(context.getString(R.string.motion_renderer_enabled))
   }
 
