@@ -646,6 +646,7 @@ class MPVView(
     const val DEFAULT_OSD_SAFE_MARGIN = 16
     const val SURFACE_RETRY_MS = 250L
     const val SURFACE_READY_TIMEOUT_MS = 5_000L
+    TARGET_SURFACE_FRAME_RATE = 120f
   }
 
   @Suppress("ReturnCount", "DEPRECATION")
@@ -755,32 +756,18 @@ class MPVView(
   }
 
   /**
-   * Applies the content FPS once per effective value. Both Surface callbacks and mpv's
-   * container-fps observer converge here, avoiding duplicate vendor display-mode requests.
-   * While motion interpolation runs, the display follows its target instead.
+   * Requests a constant 120 Hz presentation rate for the playback Surface.
+   *
+   * This is a display-mode vote only: it does not synthesize video frames.
+   * The separate motion-interpolation pipeline generates 120 FPS output frames.
    */
   internal fun updateFrameRate(fps: Double? = null) {
     if (
       android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R || isExiting ||
       !surfaceBindingEnabled || !isSurfaceReady || !PlaybackSession.state.value.surfaceAttached
     ) return
-    val content =
-      (fps ?: PlaybackSession.getPropertyDouble("container-fps"))
-        ?.takeIf { it.isFinite() && it > 0.0 && it <= 1000.0 }
-    val requested =
-      if (isMotionInterpolationRunning()) {
-        val config = MotionInterpolation.config(decoderPreferences)
-        when {
-          // A target at or below the video's rate generates nothing; keep the video's own rate.
-          content != null && MotionInterpolation.mpvTargetFps(config, context) <= content * 1.01 ->
-            content.toFloat()
-          // 0 withdraws the content-rate vote, so the display is not locked to the video's rate.
-          else -> MotionInterpolation.surfaceFrameRate(config, context) ?: 0f
-        }
-      } else {
-        content?.toFloat() ?: return
-      }
 
+    val requested = TARGET_SURFACE_FRAME_RATE
     val surface = renderSurface ?: return
     if (!surface.isValid) return
 
@@ -789,12 +776,12 @@ class MPVView(
     try {
       surface.setFrameRate(
         requested,
-        android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+        Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
       )
       lastRequestedFrameRate = requested
-      Log.d(TAG, "Requested content frame rate ${"%.3f".format(requested)} Hz")
+      Log.i(TAG, "Requested fixed playback Surface rate: ${"%.3f".format(requested)} Hz")
     } catch (e: Exception) {
-      Log.e(TAG, "Failed to set frame rate on surface", e)
+      Log.e(TAG, "Failed to request 120 Hz playback Surface rate", e)
     }
   }
 
