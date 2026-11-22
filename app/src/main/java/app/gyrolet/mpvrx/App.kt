@@ -46,6 +46,7 @@ import app.gyrolet.mpvrx.ui.player.PlaybackActivityOwner
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackPerformanceTrace
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
+import app.gyrolet.mpvrx.ui.player.GpuPerformanceController
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
 import app.gyrolet.mpvrx.ui.theme.AppTheme
 import app.gyrolet.mpvrx.ui.theme.DarkMode
@@ -142,8 +143,21 @@ class App :
       startKoin {
         androidContext(this@App)
         modules(PreferencesModule)
+  }
+  return
+  }
+
+// Recover GPU limits left behind by a previously terminated app process.
+   applicationScope.launch(Dispatchers.IO) {
+     val recovered =
+       GpuPerformanceController(this@App).recoverStaleSession()
+
+      if (!recovered) {
+        Log.e(
+        TAG,
+         "Failed to recover GPU frequency limits from previous process",
+        )
       }
-      return
     }
 
     configureDebugStrictMode()
