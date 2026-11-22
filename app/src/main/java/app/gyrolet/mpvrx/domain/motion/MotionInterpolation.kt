@@ -124,27 +124,14 @@ object MotionInterpolation {
   val isBuildSupported: Boolean
     get() = BuildConfig.MPV_SUPPORTS_MOTION_INTERPOLATION
 
-  fun requiresHdr(preferences: DecoderPreferences): Boolean =
-    isBuildSupported && preferences.motionInterpolationEnabled.get()
-
   fun setEnabled(preferences: DecoderPreferences, enabled: Boolean) {
-    if (enabled && isBuildSupported) enableHdr(preferences)
     preferences.motionInterpolationEnabled.set(enabled)
   }
 
-  fun ensureHdrEnabled(preferences: DecoderPreferences) {
-    if (requiresHdr(preferences)) enableHdr(preferences)
-  }
-
-  private fun enableHdr(preferences: DecoderPreferences) {
-    if (preferences.hdrScreenMode.get() == HdrScreenMode.OFF) {
-      val savedMode = preferences.lastHdrMode.get()
-      preferences.hdrScreenMode.set(
-        if (savedMode == HdrScreenMode.OFF) HdrScreenMode.defaultEnabledMode else savedMode,
-      )
-    }
-    if (!preferences.hdrScreenOutput.get()) preferences.hdrScreenOutput.set(true)
-  }
+/**
+ * Motion interpolation must not change the user's HDR output preferences.
+ */
+  fun ensureHdrEnabled(preferences: DecoderPreferences) = Unit
 
   /** Whether mpvRx switched the motion core on in the current mpv core, as opposed to mpv.conf. */
   @Volatile var appApplied: Boolean = false
