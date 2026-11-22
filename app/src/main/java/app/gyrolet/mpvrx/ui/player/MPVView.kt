@@ -821,21 +821,21 @@ class MPVView(
             }
         }
     }
+  }
+  
+override fun onAttachedToWindow() {
+    super.onAttachedToWindow()
+
+    context.getSystemService(DisplayManager::class.java)
+        ?.registerDisplayListener(displayListener, handler)
 }
 
-  override fun onAttachedToWindow() {
-    super.onAttachedToWindow()
-    if (MotionInterpolation.isBuildSupported) {
-      context.getSystemService(DisplayManager::class.java)?.registerDisplayListener(displayListener, handler)
-    }
-  }
+override fun onDetachedFromWindow() {
+    context.getSystemService(DisplayManager::class.java)
+        ?.unregisterDisplayListener(displayListener)
 
-  override fun onDetachedFromWindow() {
-    if (MotionInterpolation.isBuildSupported) {
-      context.getSystemService(DisplayManager::class.java)?.unregisterDisplayListener(displayListener)
-    }
     super.onDetachedFromWindow()
-  }
+}
 
   private val observedProps =
     mapOf(
