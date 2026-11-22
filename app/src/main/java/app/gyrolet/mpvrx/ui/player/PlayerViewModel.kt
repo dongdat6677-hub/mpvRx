@@ -7394,10 +7394,6 @@ fun restartFromBeginning() {
 
   fun setHdrScreenMode(mode: HdrScreenMode) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) return
-    if (mode == HdrScreenMode.OFF && MotionInterpolation.requiresHdr(decoderPreferences)) {
-      showToast(appContext.getString(R.string.motion_hdr_required))
-      return
-    }
     val resolvedMode =
       if (mode == HdrScreenMode.LINEAR && !isLinearHdrAvailable.value) {
         HdrScreenMode.defaultEnabledMode
@@ -7425,7 +7421,6 @@ fun restartFromBeginning() {
     mode != HdrScreenMode.LINEAR || isLinearHdrAvailable.value
 
   private fun initialHdrScreenMode(): HdrScreenMode {
-    MotionInterpolation.ensureHdrEnabled(decoderPreferences)
     if (!decoderPreferences.hdrScreenOutput.get()) {
       return HdrScreenMode.OFF
     }
@@ -7436,16 +7431,6 @@ fun restartFromBeginning() {
     return if (savedMode == HdrScreenMode.LINEAR &&
       !(decoderPreferences.gpuNext.get() && decoderPreferences.useVulkan.get())
     ) HdrScreenMode.defaultEnabledMode else savedMode
-  }
-
-  private fun ensureHdrForFrameGeneration(): Boolean {
-    if (!_isMpvCoreReady.value || !MotionInterpolation.requiresHdr(decoderPreferences)) return false
-    val mode = initialHdrScreenMode()
-    val modeChanged = _hdrScreenMode.value != mode
-    _hdrScreenMode.value = mode
-    applyHdrScreenOutput(mode)
-    if (modeChanged) restartAmbientIfActive()
-    return _isHdrScreenOutputEnabled.value
   }
 
   private fun reconcileHdrModeWithRenderer() {
