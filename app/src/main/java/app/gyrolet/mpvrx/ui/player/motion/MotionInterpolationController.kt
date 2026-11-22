@@ -200,7 +200,6 @@ class MotionInterpolationController(
         val shouldRun = config.enabled && coreReady && availability == MotionAvailability.READY
         if (optionKnown && !configOwned) {
           if (shouldRun) {
-            if (!running) savedVideoSync = PlaybackSession.getPropertyString("video-sync")
             applyRunning(config)
           } else if (running && MotionInterpolation.appApplied) {
             stop()
@@ -220,9 +219,6 @@ class MotionInterpolationController(
       val current = PlaybackSession.getPropertyDouble("display-fps-override")
       if (current == null || abs(current - fps.toDouble()) > 0.001) setOption("display-fps-override", fps)
     }
-    if (PlaybackSession.getPropertyString("video-sync")?.startsWith("display-") != true) {
-      setOption("video-sync", "display-resample")
-    }
     // Changing the target restarts the motion core, so only write it when it differs.
     val target = MotionInterpolation.mpvTargetFps(config, context)
     if (currentTargetFps() != target) setOption(MotionInterpolation.OPTION, target.toString())
@@ -233,10 +229,8 @@ class MotionInterpolationController(
   private fun stop() {
     setOption(MotionInterpolation.OPTION, "0")
     // Null when startup applied it before this controller existed; then the app default applies.
-    setOption("video-sync", savedVideoSync ?: "audio")
     setOption("display-fps-override", "0")
     MotionInterpolation.appApplied = false
-    savedVideoSync = null
     lastSample = null
   }
 
@@ -252,10 +246,6 @@ class MotionInterpolationController(
   /** The live renderer, not the preference: a failed Vulkan start falls back to OpenGL. */
   private fun isRendererRunning(): Boolean =
     PlaybackSession.videoOutput == "gpu-next" && PlaybackSession.getPropertyString("gpu-api") == "vulkan"
-
-  private fun isDisplaySyncAllowed(): Boolean =
-    !MpvConfigOverridePolicy.isOwnedByMpvConf("video-sync") ||
-      PlaybackSession.getPropertyString("video-sync")?.startsWith("display-") == true
 
   /** Only known once a video output exists; until then it is assumed to work. */
   private fun isGpuUnsupported(): Boolean =
