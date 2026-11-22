@@ -523,30 +523,27 @@ class MPVView(
     // This prevents long-term jitter buildup without aggressively sacrificing smoothness.
     PlaybackSession.setOptionString("framedrop", "vo")
 
-    // Use audio-based video sync for better frame pacing with 4K HDR content.
-    // This prevents timing jitter when the display refresh rate doesn't perfectly
-    // match the video frame rate (e.g., 24fps content on 60Hz display).
-    PlaybackSession.setOptionString("video-sync", "audio")
+    // Motion interpolation uses GPU Next. Keep video-sync entirely controlled by mpv.conf.
+val motion = inputs.motionInterpolation
+val motionStarts =
+    motion.enabled &&
+        MotionInterpolation.barrier(context, decoderPreferences) == MotionAvailability.READY &&
+        backend.vo == "gpu-next"
 
-    // FongMi's GPU motion core renders through gpu-next on Vulkan and needs display sync; on every
-    // other renderer playback keeps the defaults above. Changes after startup come from
-    // MotionInterpolationController.
-    val motion = inputs.motionInterpolation
-    val motionStarts =
-      motion.enabled && MotionInterpolation.barrier(context, decoderPreferences) == MotionAvailability.READY &&
-        backend.vo == "gpu-next" && useVulkan
-    // A new core starts without mpvRx's motion settings; mpv.conf may still enable it.
-    MotionInterpolation.appApplied = motionStarts && !MpvConfigOverridePolicy.isOwnedByMpvConf(MotionInterpolation.OPTION)
-    if (motionStarts) {
-      MotionInterpolation.displayFpsOverride(context)?.let {
+// A new core starts without mpvRx's motion settings; mpv.conf may still enable it.
+MotionInterpolation.appApplied =
+    motionStarts &&
+        !MpvConfigOverridePolicy.isOwnedByMpvConf(MotionInterpolation.OPTION)
+
+if (motionStarts) {
+    MotionInterpolation.displayFpsOverride(context)?.let {
         PlaybackSession.setOptionString("display-fps-override", it)
-      }
-      PlaybackSession.setOptionString("video-sync", "display-resample")
-      PlaybackSession.setOptionString(
+    }
+    PlaybackSession.setOptionString(
         MotionInterpolation.OPTION,
         MotionInterpolation.mpvTargetFps(motion, context).toString(),
-      )
-    }
+    )
+}
 
     // These are native property/command operations (shader list changes), not mpv options.
     // Running them before MPVLib.init() fails with "mpv_command: core not initialized".
