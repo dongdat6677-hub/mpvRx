@@ -69,7 +69,6 @@ class MotionInterpolationController(
   private val preferences: DecoderPreferences,
   private val scope: CoroutineScope,
   private val showText: (String) -> Unit,
-  private val requireHdrOutput: () -> Boolean = { true },
 ) {
   private val _state =
     MutableStateFlow(
@@ -243,9 +242,8 @@ class MotionInterpolationController(
 
   private fun currentTargetFps(): Int = PlaybackSession.getPropertyInt(MotionInterpolation.OPTION) ?: 0
 
-  /** The live renderer, not the preference: a failed Vulkan start falls back to OpenGL. */
-  private fun isRendererRunning(): Boolean =
-    PlaybackSession.videoOutput == "gpu-next" && PlaybackSession.getPropertyString("gpu-api") == "vulkan"
+private fun isRendererRunning(): Boolean =
+    PlaybackSession.videoOutput == "gpu-next"
 
   /** Only known once a video output exists; until then it is assumed to work. */
   private fun isGpuUnsupported(): Boolean =
