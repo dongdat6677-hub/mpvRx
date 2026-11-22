@@ -1848,6 +1848,9 @@ class PlayerActivity :
   override fun onWindowFocusChanged(hasFocus: Boolean) {
     super.onWindowFocusChanged(hasFocus)
     if (!mpvInitialized) return
+    if (hasFocus && ownsPlaybackSession()) {
+    request120HzDisplayMode()
+    }
     if (hasFocus && !isInPictureInPictureMode) completePipExpansion()
     if (!hasFocus) {
       cancelSystemBarsAutoHide()
@@ -3990,6 +3993,11 @@ class PlayerActivity :
 
   override fun onResume() {
     super.onResume()
+
+    if (mpvInitialized && ownsPlaybackSession()) {
+    request120HzDisplayMode()
+    }
+    
     app.gyrolet.mpvrx.ui.preferences.LauncherIconManager.refreshTaskIcon(this)
     onPlaybackResumed()
   }
