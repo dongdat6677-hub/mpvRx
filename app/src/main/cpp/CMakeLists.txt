@@ -30,6 +30,7 @@ target_link_libraries(
     mpvrx_dataspace
     PRIVATE
     android
+    nativewindow
 )
 
 # Both targets exist only for yt-dlp. Gradle turns this off for flavors without yt-dlp (Play).
