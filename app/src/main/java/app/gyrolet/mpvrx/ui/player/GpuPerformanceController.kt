@@ -37,6 +37,30 @@ internal class GpuPerformanceController(context: Context) {
             if (!restoreLocked()) return@synchronized false
           }
 
+          val frequencyResult = runRoot(
+  "cat $FREQUENCIES_PATH",
+)
+
+if (frequencyResult.first != 0) {
+  Log.e(
+    TAG,
+    "Cannot read available GPU frequencies: ${frequencyResult.second}",
+  )
+  return@synchronized false
+}
+
+val availableFrequencies = frequencyResult.second
+  .trim()
+  .split(Regex("\\s+"))
+  .mapNotNull { it.toLongOrNull() }
+
+if (TARGET_FREQ !in availableFrequencies) {
+  Log.e(
+    TAG,
+    "Target GPU frequency $TARGET_FREQ is not supported. Available: $availableFrequencies",
+  )
+  return@synchronized false
+}
           if (!preferences.getBoolean(KEY_ACTIVE, false)) {
             val result = runRoot(
               """
@@ -296,6 +320,9 @@ private var playbackGeneration = 0L
 
     const val MAX_PATH =
       "/sys/class/kgsl/kgsl-3d0/devfreq/max_freq"
+
+    const val FREQUENCIES_PATH =
+      "/sys/class/kgsl/kgsl-3d0/devfreq/available_frequencies"
   }
 }
 
