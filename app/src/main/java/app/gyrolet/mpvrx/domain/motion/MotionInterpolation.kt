@@ -128,11 +128,6 @@ object MotionInterpolation {
     preferences.motionInterpolationEnabled.set(enabled)
   }
 
-/**
- * Motion interpolation must not change the user's HDR output preferences.
- */
-  fun ensureHdrEnabled(preferences: DecoderPreferences) = Unit
-
   /** Whether mpvRx switched the motion core on in the current mpv core, as opposed to mpv.conf. */
   @Volatile var appApplied: Boolean = false
 
