@@ -110,10 +110,31 @@ internal class GpuPerformanceController(context: Context) {
 
           Log.i(TAG, "GPU frequency limits requested: $TARGET_FREQ")
           true
-        }.getOrElse {
-          Log.e(TAG, "GPU performance activation failed", it)
+        
+        }.getOrElse { error ->
+          Log.e(TAG, "GPU performance activation failed", error)
+
+          val restored = runCatching {
+            restoreLocked()
+          }.getOrElse { restoreError ->
+            Log.e(
+              TAG,
+              "GPU restoration after activation failure threw an exception",
+              restoreError,
+            )
+            false
+          }
+
+          if (!restored) {
+            Log.e(
+              TAG,
+              "GPU limits may remain modified after activation failure",
+            )
+          }
+
           false
         }
+
       }
     }
 
