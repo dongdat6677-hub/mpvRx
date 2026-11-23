@@ -65,6 +65,25 @@ jobs:
         with:
           # Play Store version codes, BuildConfig.GIT_COUNT and preview identities need full history.
           fetch-depth: 0
+      
+      - name: Download P3 patched mpvlib AAR
+        if: ${{ matrix.distribution.id == 'standard' || matrix.distribution.id == 'playstore' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p app/libs
+
+          AAR_URL="https://github.com/dongdat6677-hub/mpvlibAndroid/releases/download/v1-p3-patch/mpvlib.aar"
+          AAR_PATH="app/libs/mpvlib-patched.aar"
+          EXPECTED_SHA256="637d3bb74608506a5aa080277c761a8dcd14c4143527e52699d2526157d79c03"
+
+          curl -fL --retry 3 "$AAR_URL" -o "$AAR_PATH"
+
+          echo "$EXPECTED_SHA256  $AAR_PATH" | sha256sum --check
+
+          echo "P3 patched AAR downloaded and SHA-256 verified."
+          ls -lh "$AAR_PATH"
 
       - name: Generate build metadata
         id: metadata
