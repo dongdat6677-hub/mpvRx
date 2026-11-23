@@ -1495,6 +1495,40 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     removeVideoFilter("deband")
     if (mode == Debanding.CPU) command("vf", "add", "@deband:gradfun=radius=12")
   }
+  
+  /**
+   * Applies an automatically selected deband profile to the active libmpv core.
+   *
+   * The entire adaptive update is skipped when mpv.conf owns any deband option,
+   * preventing the adaptive controller from partially overriding user settings.
+   */
+  internal fun applyAdaptiveDebandProfile(
+    profile: AdaptiveDebandProfile,
+  ): Boolean = withReadyCore(false) {
+    val optionNames = listOf(
+      "deband",
+      "deband-iterations",
+      "deband-threshold",
+      "deband-range",
+      "deband-grain",
+    )
+
+    if (optionNames.any(MpvConfigOverridePolicy::isOwnedByMpvConf)) {
+      return@withReadyCore false
+    }
+
+    val updates = listOf(
+      "deband" to if (profile.enabled) "yes" else "no",
+      "deband-iterations" to profile.iterations.toString(),
+      "deband-threshold" to profile.threshold.toString(),
+      "deband-range" to profile.range.toString(),
+      "deband-grain" to profile.grain.toString(),
+    )
+
+    updates.all { (name, value) ->
+      setOptionString(name, value) >= 0
+    }
+  }
 
   fun observeProperty(
     property: String,
