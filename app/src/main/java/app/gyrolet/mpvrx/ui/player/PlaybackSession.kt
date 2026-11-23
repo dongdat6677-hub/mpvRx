@@ -1496,11 +1496,29 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
 
   /** Shared runtime path for the real Decoder preferences page and the existing debanding controls. */
   internal fun applyDebanding(mode: Debanding) = withReadyCore(Unit) {
-    setOptionString("deband", if (mode == Debanding.GPU) "yes" else "no")
-    removeVideoFilter("deband")
+      adaptiveDebandEnabled = mode == Debanding.Auto
+      adaptiveDebandController.reset()
+      adaptiveDebandGeneration = _state.value.generation
+
+      setOptionString("deband", if (mode == Debanding.GPU) "yes" else "no")
+      removeVideoFilter("deband")
     if (mode == Debanding.CPU) command("vf", "add", "@deband:gradfun=radius=12")
+}
+
+  /**
+ * Enables or disables the adaptive debanding controller.
+ *
+ * Called when the selected debanding mode changes or when the core
+ * is initialized with the current Decoder preference.
+ */
+  internal fun configureAdaptiveDebanding(enabled: Boolean) {
+    nativeLock.withLock {
+        adaptiveDebandEnabled = enabled
+        adaptiveDebandController.reset()
+        adaptiveDebandGeneration = _state.value.generation
+     }
   }
-  
+
   /**
    * Applies an automatically selected deband profile to the active libmpv core.
    *
