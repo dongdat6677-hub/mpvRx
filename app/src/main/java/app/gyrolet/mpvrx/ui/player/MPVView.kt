@@ -619,6 +619,7 @@ if (motionStarts) {
       Debanding.None -> {}
       Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
       Debanding.GPU -> PlaybackSession.setOptionString("deband", "yes")
+      Debanding.Auto -> PlaybackSession.setOptionString("deband", "no")
     }
 
   }
