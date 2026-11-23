@@ -1556,6 +1556,34 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+  /**
+ * Submits a banding analysis score for the active playback generation.
+ *
+ * Scores from stale videos, unloaded media, or non-Auto modes are rejected.
+ * A profile is applied only after AdaptiveDebandController confirms a transition.
+ */
+internal fun observeAdaptiveBandingScore(
+    expectedGeneration: Long,
+    score: Int,
+): Boolean = nativeLock.withLock {
+    if (!adaptiveDebandEnabled) return@withLock false
+
+    val current = _state.value
+
+    if (
+        expectedGeneration != adaptiveDebandGeneration ||
+        expectedGeneration != current.generation ||
+        loadedGeneration != expectedGeneration ||
+        current.phase !in setOf(PlaybackPhase.READY, PlaybackPhase.BACKGROUND)
+    ) {
+        return@withLock false
+    }
+
+    val profile = adaptiveDebandController.observe(score) ?: return@withLock true
+
+    applyAdaptiveDebandProfile(profile)
+  }
+
   fun observeProperty(
     property: String,
     format: Int,
