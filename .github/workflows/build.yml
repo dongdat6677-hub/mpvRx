@@ -67,7 +67,7 @@ jobs:
           fetch-depth: 0
       
       - name: Download P3 patched mpvlib AAR
-        if: ${{ matrix.distribution.id == 'standard' || matrix.distribution.id == 'playstore' }}
+        if: ${{ matrix.distribution.id == 'standard' || matrix.distribution.id == 'playstore' || matrix.distribution.id == 'playstore_bundle' }}
         shell: bash
         run: |
           set -euo pipefail
