@@ -434,7 +434,7 @@ dependencies {
   implementation(libs.google.cast.framework)
 
   "standardImplementation"(files("libs/mpvlib-patched.aar"))
-  "playstoreImplementation"(variantOf(libs.mpvlib.standard) { artifactType("aar") })
+  "playstoreImplementation"(files("libs/mpvlib-patched.aar"))
   "noVulkanImplementation"(variantOf(libs.mpvlib.no.vulkan) { artifactType("aar") })
   "fongmiImplementation"(variantOf(libs.mpvlib.fongmi) { artifactType("aar") })
 
