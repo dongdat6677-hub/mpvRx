@@ -424,7 +424,7 @@ jobs:
         env:
           GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
-          SITE_BASE_URL: https://riteshp2001.github.io/mpvRx
+          SITE_BASE_URL: https://dongdat6677-hub.github.io/mpvRx
         shell: bash
         run: |
           set -euo pipefail
