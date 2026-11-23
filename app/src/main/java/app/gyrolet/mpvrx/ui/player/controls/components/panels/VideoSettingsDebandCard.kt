@@ -108,6 +108,7 @@ fun VideoSettingsDebandCard(
                 Debanding.None -> Icon(Icons.RoundedFilled.NotInterested, null)
                 Debanding.CPU -> Icon(Icons.RoundedFilled.Memory, null)
                 Debanding.GPU -> Icon(Icons.RoundedFilled.DeveloperBoard, null)
+                Debanding.Auto -> Icon(Icons.RoundedFilled.Gradient, null)
               }
             }
           }
