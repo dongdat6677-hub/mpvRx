@@ -101,6 +101,7 @@ enum class Debanding(
   None(R.string.player_sheets_deband_none),
   CPU(R.string.player_sheets_deband_cpu),
   GPU(R.string.player_sheets_deband_gpu),
+  Auto(R.string.player_sheets_deband_auto),
 }
 
 /** Visual style of the ambient area around the video. */
