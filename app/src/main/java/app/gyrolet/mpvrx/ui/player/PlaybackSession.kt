@@ -329,6 +329,11 @@ object PlaybackSession : MPVLib.EventObserver {
   private var desiredPaused = true
   private var loadedGeneration = 0L
   private var loadedPlaybackItem: PlaybackItem? = null
+  // Adaptive Debanding state is owned by the process-wide playback session.
+  // All controller access is protected by nativeLock.
+  private val adaptiveDebandController = AdaptiveDebandController()
+  private var adaptiveDebandEnabled = false
+  private var adaptiveDebandGeneration = 0L
   private var loadedAudiobookDurationMs = 0L
   private var loadedAudiobookEnded = false
   private var speedBeforeAudiobook: Float? = null
