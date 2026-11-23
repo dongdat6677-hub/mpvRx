@@ -615,13 +615,18 @@ if (motionStarts) {
     }
     pendingStartupShaders = null
 
-    when (decoderPreferences.debanding.get()) {
-      Debanding.None -> {}
-      Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
-      Debanding.GPU -> PlaybackSession.setOptionString("deband", "yes")
-      Debanding.Auto -> PlaybackSession.setOptionString("deband", "no")
-    }
+    val debandingMode = decoderPreferences.debanding.get()
 
+    PlaybackSession.configureAdaptiveDebanding(
+      enabled = debandingMode == Debanding.Auto,
+    )
+
+   when (debandingMode) {
+     Debanding.None -> {}
+     Debanding.CPU -> PlaybackSession.command("vf", "add", "@deband:gradfun=radius=12")
+     Debanding.GPU -> PlaybackSession.setOptionString("deband", "yes")
+     Debanding.Auto -> PlaybackSession.setOptionString("deband", "no")
+    }
   }
 
   fun applyOsdSafeAreaMargins(insets: WindowInsetsCompat? = null) {
