@@ -1302,6 +1302,9 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       beginPlaybackTransitionAudioGuardLocked(canRestore = true)
 
       val generation = _state.value.generation + 1L
+      
+      adaptiveDebandController.reset()
+      adaptiveDebandGeneration = generation
 
       applicationContext?.let { context ->
         GpuPerformanceController(context).updatePlaybackGeneration(generation)
