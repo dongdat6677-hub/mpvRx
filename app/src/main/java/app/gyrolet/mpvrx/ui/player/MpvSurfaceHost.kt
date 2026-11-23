@@ -104,20 +104,6 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
         return
       }
 
-      if (android.os.Build.VERSION.SDK_INT >= 28) {
-        val result = NativeDataspace.setSurfaceDataspace(
-          surface,
-          NativeDataspace.DISPLAY_P3_DATASPACE,
-        )
-
-        if (result != 0) {
-          android.util.Log.e(
-            "MpvSurfaceHost",
-            "Failed to set Display P3 dataspace: $result",
-          )
-        }
-      }
-
       renderSurface = surface
       ownsSurface = owned
       onRenderSurfaceAvailable(surface, width, height)
