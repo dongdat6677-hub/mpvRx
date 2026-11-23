@@ -12,7 +12,7 @@ set -euo pipefail
 
 dest="${1:?usage: fetch-live-pages-site.sh <dest-dir>}"
 repo="${GH_REPO:?GH_REPO is required}"
-base="${SITE_BASE_URL:-https://riteshp2001.github.io/mpvRx}"
+base="${SITE_BASE_URL:-https://dongdat6677-hub.github.io/mpvRx}"
 base="${base%/}"
 feeds=(latest.json experimental.json)
 
