@@ -459,7 +459,7 @@ vec3 soft_clip_rgb_outside_only(vec3 color) {
 }
 
 vec4 hook() {
-    vec4 color = HOOKED_tex(HOOKED_pos);
+    vec4 color = HOOKED_mul * textureLod(HOOKED_raw, HOOKED_pos, 0.0);
     vec3 xyz = color.rgb * BT2020_TO_XYZ;
     vec3 lab = xyz_to_oklab(xyz);
     lab = map_to_guide_gamut(lab);
