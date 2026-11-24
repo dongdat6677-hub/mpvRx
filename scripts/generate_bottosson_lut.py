@@ -190,7 +190,7 @@ def main():
     texture_block = (
         "//!TEXTURE GAMUT_BOUNDARY\n"
         "//!SIZE 256 128\n"
-        "//!FORMAT rgba16f\n"
+        "//!FORMAT rgba16hf\n"
         "//!FILTER NEAREST\n"
         "//!BORDER CLAMP\n"
         + "\n".join(lines)
@@ -202,7 +202,7 @@ def main():
 
     print("Bottosson static LUT generated successfully.")
     print(f"Dimensions: {HUE_SIZE} x {LIGHTNESS_SIZE}")
-    print("Format: rgba16f")
+    print("Format: rgba16hf")
     print(f"Texture data: {len(lut_hex)} hexadecimal characters")
     print("Compute hook removed; OUTPUT hook retained.")
 
