@@ -7450,6 +7450,10 @@ fun restartFromBeginning() {
 
   private fun applyHdrScreenOutput(mode: HdrScreenMode) {
     if (MpvConfigOverridePolicy.ownsAny(MpvConfigControlledFeatures.HDR_OUTPUT)) {
+      Log.w(
+  "MpvColorPipeline",
+  "SKIPPED: HDR_OUTPUT is owned by MpvConfigOverridePolicy"
+   )
       _isHdrScreenOutputPipelineReady.value = false
       _isHdrScreenOutputEnabled.value = false
       return
@@ -7457,6 +7461,11 @@ fun restartFromBeginning() {
     val pipelineReady = refreshHdrScreenOutputPipelineState()
     runCatching {
       val boostSdr = decoderPreferences.boostSdrToHdr.get()
+
+      Log.i(
+  "MpvColorPipeline",
+  "ENTERING: mode=$mode, pipelineReady=$pipelineReady"
+   )
       // Init-time options are already applied by MPVView. Runtime transitions only need properties.
       applyHdrScreenOutputProperties(mode, pipelineReady, boostSdr)
       applyHdrToysMode(mode, pipelineReady)
