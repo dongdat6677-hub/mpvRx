@@ -86,6 +86,16 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Download patched mpvlib AAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p app/libs
+          curl -fL \
+            "https://github.com/dongdat6677-hub/mpvlibAndroid/releases/download/v2-autodeband-no-p3/mpvlib.aar" \
+            -o app/libs/mpvlib-patched.aar
+          test -s app/libs/mpvlib-patched.aar
+
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
         shell: bash
