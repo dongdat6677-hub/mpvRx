@@ -60,7 +60,7 @@ COLORCHECKER = (
 
 def mul_matrix(v, matrix):
     return tuple(
-        sum(v[i] * matrix[j][i] for i in range(3))
+        sum(v[i] * matrix[i][j] for i in range(3))
         for j in range(3)
     )
 
@@ -190,7 +190,7 @@ def main():
     texture_block = (
         "//!TEXTURE GAMUT_BOUNDARY\n"
         "//!SIZE 256 128\n"
-        "//!FORMAT rgba16hf\n"
+        "//!FORMAT rgba16f\n"
         "//!FILTER NEAREST\n"
         "//!BORDER CLAMP\n"
         + "\n".join(lines)
