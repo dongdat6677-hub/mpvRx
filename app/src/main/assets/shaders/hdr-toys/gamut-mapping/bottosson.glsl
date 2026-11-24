@@ -287,12 +287,14 @@ float normalized_hue(float hue) {
 }
 
 vec3 fetch_boundary_texel(int hue_index, int lightness_index) {
-    vec3 value = texelFetch(
-        GAMUT_BOUNDARY_raw,
-        ivec2(hue_index, lightness_index),
-        0
-    ).rgb;
-    return GAMUT_BOUNDARY_mul * value;
+    vec2 uv = (
+        vec2(float(hue_index), float(lightness_index)) + vec2(0.5)
+    ) / vec2(
+        float(BOUNDARY_HUE_SIZE),
+        float(BOUNDARY_LIGHTNESS_SIZE)
+    );
+
+    return GAMUT_BOUNDARY_tex(uv).rgb;
 }
 
 // GAMUT_BOUNDARY already carries the generator's hue-periodic filtering, so
