@@ -45,11 +45,10 @@ enum class HdrToysProfile(
   ),
   BT_2020(
     configSection = "bt.2020",
-    targetPrim = "display-p3",
-    targetTrc = "srgb",
+    targetPrim = "bt.2020",
+    targetTrc = "linear",
     shaderPaths =
       listOf(
-        "hdr-toys/transfer-function/bt1886_inv.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
         "hdr-toys/transfer-function/srgb.glsl",
       ),
