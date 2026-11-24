@@ -66,17 +66,30 @@ class HdrToysManager(
    * Applies [profile]'s shader chain to the current mpv instance.
    * Returns true if all shaders were successfully appended.
    */
-  fun apply(profile: HdrToysProfile): Boolean {
-    if (!initialize()) {
-      clear()
-      return false
-    }
+  
+fun apply(profile: HdrToysProfile): Boolean {
+  if (!initialize()) {
     clear()
-    profile.mpvShaderPaths.forEach { shaderPath ->
-      shaderRuntime.command("change-list", "glsl-shaders", "append", shaderPath)
-    }
-    return true
+    return false
   }
+
+  clear()
+
+  profile.mpvShaderPaths.forEach { shaderPath ->
+    shaderRuntime.command("change-list", "glsl-shaders", "append", shaderPath)
+  }
+
+  val activeShaders = shaderRuntime.getPropertyString("glsl-shaders")
+
+  Log.i(
+    TAG,
+    "HDR_TOYS_VERIFY: profile=${profile.name}; " +
+      "requested=${profile.mpvShaderPaths}; " +
+      "active-glsl-shaders=$activeShaders"
+  )
+
+  return true
+}
 
   /** Removes every hdr-toys shader from mpv's active glsl-shaders list. */
   fun clear() {
