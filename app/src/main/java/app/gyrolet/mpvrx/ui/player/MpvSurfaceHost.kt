@@ -4,6 +4,8 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import android.os.Build
+import android.util.Log
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.util.AttributeSet
@@ -99,15 +101,33 @@ abstract class MpvSurfaceHost(context: Context, attributes: AttributeSet) : Fram
     descendantFocusability = FOCUS_BLOCK_DESCENDANTS
 
     fun available(surface: Surface, width: Int, height: Int, owned: Boolean) {
-      if (epoch != rendererEpoch) {
-        if (owned) surface.release()
-        return
-      }
+  if (epoch != rendererEpoch) {
+    if (owned) surface.release()
+    return
+  }
 
-      renderSurface = surface
-      ownsSurface = owned
-      onRenderSurfaceAvailable(surface, width, height)
+  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+    val result = runCatching {
+      NativeDataspace.setSurfaceDataspace(
+        surface,
+        NativeDataspace.DISPLAY_P3_DATASPACE,
+      )
+    }.getOrElse { error ->
+      Log.e("MpvSurfaceHost", "Failed to set Display P3 dataspace", error)
+      Int.MIN_VALUE
     }
+
+    if (result == 0) {
+      Log.i("MpvSurfaceHost", "Display P3 dataspace successfully applied")
+    } else {
+      Log.w("MpvSurfaceHost", "Display P3 dataspace failed: result=$result")
+    }
+  }
+
+  renderSurface = surface
+  ownsSurface = owned
+  onRenderSurfaceAvailable(surface, width, height)
+}
 
     fun destroyed() {
       if (epoch != rendererEpoch) return
