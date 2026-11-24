@@ -9,6 +9,9 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+import android.util.Log
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import androidx.annotation.StringRes
 import app.gyrolet.mpvrx.R
 import app.gyrolet.mpvrx.domain.hdr.HdrToysProfile
@@ -195,6 +198,7 @@ fun applyHdrScreenOutputOptions(
  * idempotent and independent of their previous state. gpu-next marks these options UPDATE_VIDEO,
  * therefore property writes trigger the renderer to rebuild its video output state.
  */
+
 fun applyHdrScreenOutputProperties(
   mode: HdrScreenMode,
   pipelineReady: Boolean,
@@ -206,14 +210,40 @@ fun applyHdrScreenOutputProperties(
         !MpvConfigOverridePolicy.isOwnedByMpvConf(property) &&
           PlaybackSession.getPropertyString(property) != value
       }
-  if (changedOptions.isEmpty()) return
 
-  // All HDR options are documented mpv properties. A single load-config-file command keeps
-  // the color profile changes together instead of repeatedly crossing JNI and triggering VO
-  // reconfiguration between unrelated intermediate HDR/SDR configurations.
-  val config = changedOptions.joinToString("\n") { (property, value) ->
-    require(value.none { it == '\n' || it == '\r' || it == '\u0000' })
-    "$property=%${value.toByteArray(Charsets.UTF_8).size}%$value"
+  if (changedOptions.isNotEmpty()) {
+    val config = changedOptions.joinToString("\n") { (property, value) ->
+      require(value.none { it == '\n' || it == '\r' || it == '\u0000' })
+      "$property=%${value.toByteArray(Charsets.UTF_8).size}%$value"
+    }
+    PlaybackSession.command("load-config-file", "memory://$config")
   }
-  PlaybackSession.command("load-config-file", "memory://$config")
+
+  logHdrColorPipelineDiagnostics(mode)
 }
+
+private fun logHdrColorPipelineDiagnostics(mode: HdrScreenMode) {
+  runCatching {
+    val source =
+      PlaybackSession.getPropertyNode("video-params")
+        ?.toObject<JsonObject>(Json)
+
+    val target =
+      PlaybackSession.getPropertyNode("video-target-params")
+        ?.toObject<JsonObject>(Json)
+
+    Log.i(
+      "MpvColorPipeline",
+      "mode=$mode; " +
+        "current-vo=${PlaybackSession.getPropertyString("current-vo")}; " +
+        "target-prim=${PlaybackSession.getPropertyString("target-prim")}; " +
+        "target-trc=${PlaybackSession.getPropertyString("target-trc")}; " +
+        "target-colorspace-hint=${PlaybackSession.getPropertyString("target-colorspace-hint")}; " +
+        "video-params=$source; " +
+        "video-target-params=$target"
+    )
+  }.onFailure { error ->
+    Log.w("MpvColorPipeline", "Failed to read color pipeline parameters", error)
+  }
+}
+
