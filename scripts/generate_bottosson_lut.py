@@ -60,7 +60,7 @@ COLORCHECKER = (
 
 def mul_matrix(v, matrix):
     return tuple(
-        sum(v[i] * matrix[i][j] for i in range(3))
+        sum(v[i] * matrix[j][i] for i in range(3))
         for j in range(3)
     )
 
@@ -202,7 +202,7 @@ def main():
 
     print("Bottosson static LUT generated successfully.")
     print(f"Dimensions: {HUE_SIZE} x {LIGHTNESS_SIZE}")
-    print("Format: rgba16hf")
+    print("Format: rgba16f")
     print(f"Texture data: {len(lut_hex)} hexadecimal characters")
     print("Compute hook removed; OUTPUT hook retained.")
 
