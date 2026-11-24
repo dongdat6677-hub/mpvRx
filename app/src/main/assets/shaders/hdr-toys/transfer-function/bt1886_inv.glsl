@@ -26,7 +26,7 @@ vec3 bt1886_eotf(vec3 color, float gamma, float Lw, float Lb) {
 }
 
 vec4 hook() {
-    vec4 color = HOOKED_tex(HOOKED_pos);
+    vec4 color = HOOKED_mul * textureLod(HOOKED_raw, HOOKED_pos, 0.0);
 
     float black = contrast_ratio > 0.0 ? 1.0 / contrast_ratio : 0.0;
     color.rgb = bt1886_eotf(color.rgb, 2.4, 1.0, black);
