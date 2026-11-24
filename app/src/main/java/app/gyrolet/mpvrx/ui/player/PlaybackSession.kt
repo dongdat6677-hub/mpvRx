@@ -311,7 +311,7 @@ object PlaybackSession : MPVLib.EventObserver {
 
   private var pendingEofSeekGeneration: Long? = null
   private var applicationContext: Context? = null
-  private var desiredVideoOutput = "gpu"
+  private var desiredVideoOutput = "gpu-next"
   private var activeCoreConfigurationKey: String? = null
   private var activeUserScriptsKey: String? = null
   private var attachedSurfaceOwner: Any? = null
