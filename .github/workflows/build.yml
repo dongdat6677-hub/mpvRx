@@ -65,6 +65,19 @@ jobs:
         with:
           # Play Store version codes, BuildConfig.GIT_COUNT and preview identities need full history.
           fetch-depth: 0
+
+      - name: Generate Bottosson static gamut LUT
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/generate_bottosson_lut.py
+          test -s app/src/main/assets/shaders/hdr-toys/gamut-mapping/bottosson.glsl
+          if grep -q '//!COMPUTE' app/src/main/assets/shaders/hdr-toys/gamut-mapping/bottosson.glsl; then
+            echo "::error::Bottosson compute shader was not removed."
+            exit 1
+          fi
+          grep -q '//!TEXTURE GAMUT_BOUNDARY' app/src/main/assets/shaders/hdr-toys/gamut-mapping/bottosson.glsl
+          echo "Static gamut LUT generation verified."
       
       - name: Download P3 patched mpvlib AAR
         if: ${{ matrix.distribution.id == 'standard' || matrix.distribution.id == 'playstore' || matrix.distribution.id == 'playstore_bundle' }}
