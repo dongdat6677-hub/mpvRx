@@ -137,10 +137,10 @@ private fun commonSettings(
 
 private fun offSettings(): List<Pair<String, String>> =
   commonSettings(
-    targetColorspaceHint = "auto",
+    targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
-    targetPrim = "auto",
-    targetTrc = "auto",
+    targetPrim = "display-p3",
+    targetTrc = "srgb",
     targetPeak = "auto",
     inverseToneMapping = "no",
     hdrComputePeak = "auto",
@@ -168,8 +168,8 @@ private fun linearHdrSettings(boostSdrToHdr: Boolean): List<Pair<String, String>
     // mode history and can keep rendering with stale primaries/TRC after the UI says Linear.
     targetColorspaceHint = "yes",
     targetColorspaceHintMode = "target",
-    targetPrim = "auto",
-    targetTrc = "auto",
+    targetPrim = "display-p3",
+    targetTrc = "srgb",
     targetPeak = "auto",
     inverseToneMapping = if (boostSdrToHdr) "yes" else "no",
     hdrComputePeak = "yes",
