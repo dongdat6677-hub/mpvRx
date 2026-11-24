@@ -182,10 +182,6 @@ def main():
     end = source.index(end_marker, start + len(start_marker))
 
     lut_hex = generate_texture()
-    lines = [
-        lut_hex[i:i + 96]
-        for i in range(0, len(lut_hex), 96)
-    ]
 
     texture_block = (
         "//!TEXTURE GAMUT_BOUNDARY\n"
@@ -193,7 +189,7 @@ def main():
         "//!FORMAT rgba16hf\n"
         "//!FILTER NEAREST\n"
         "//!BORDER CLAMP\n"
-        + "\n".join(lines)
+        + lut_hex
         + "\n\n"
     )
 
