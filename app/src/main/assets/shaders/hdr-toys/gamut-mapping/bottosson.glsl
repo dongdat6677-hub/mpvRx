@@ -116,10 +116,10 @@ const mat3 XYZ_TO_BT2020 = mat3(
      0.017639857445311, -0.042770613257809,  0.942103121235474
 );
 
-const mat3 XYZ_TO_BT709 = mat3(
-     3.2409699419045226, -1.5373831775700940, -0.4986107602930034,
-    -0.9692436362808796,  1.8759675015077202,  0.0415550574071756,
-     0.0556300796969937, -0.2039769588889765,  1.0569715142428786
+const mat3 XYZ_TO_DISPLAY_P3 = mat3(
+     2.493496911941425,  -0.931383617919124,  -0.402710784450717,
+    -0.829488969561575,   1.762664060318346,   0.023624685841944,
+     0.035845830243784,  -0.076172389268041,   0.956884524007687
 );
 
 vec3 oklch_to_xyz(float lightness, float chroma, vec2 hue_direction) {
@@ -178,7 +178,7 @@ void generate_gamut_boundary(ivec2 position) {
     float output_chroma = find_chroma_boundary(
         lightness,
         hue_direction,
-        XYZ_TO_BT709
+        XYZ_TO_DISPLAY_P3
     );
     float protection_chroma = sample_colorchecker_protection(hue);
 
@@ -226,10 +226,10 @@ const mat3 BT2020_TO_XYZ = mat3(
     0.0000000000000000, 0.0280726930490874, 1.0609850577107910
 );
 
-const mat3 XYZ_TO_BT709 = mat3(
-     3.2409699419045226, -1.5373831775700940, -0.4986107602930034,
-    -0.9692436362808796,  1.8759675015077202,  0.0415550574071756,
-     0.0556300796969937, -0.2039769588889765,  1.0569715142428786
+const mat3 XYZ_TO_DISPLAY_P3 = mat3(
+     2.493496911941425,  -0.931383617919124,  -0.402710784450717,
+    -0.829488969561575,   1.762664060318346,   0.023624685841944,
+     0.035845830243784,  -0.076172389268041,   0.956884524007687
 );
 
 const mat3 XYZ_TO_LMS = mat3(
@@ -464,7 +464,7 @@ vec4 hook() {
     vec3 lab = xyz_to_oklab(xyz);
     lab = map_to_guide_gamut(lab);
     vec3 mapped_xyz = oklab_to_xyz(lab);
-    vec3 mapped_rgb = mapped_xyz * XYZ_TO_BT709;
+    vec3 mapped_rgb = mapped_xyz * XYZ_TO_DISPLAY_P3;
     color.rgb = soft_clip_rgb_outside_only(mapped_rgb);
     color.rgb = clamp(color.rgb, 0.0, 1.0);
     return color;
