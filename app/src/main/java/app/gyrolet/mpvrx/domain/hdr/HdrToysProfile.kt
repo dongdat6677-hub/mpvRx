@@ -18,53 +18,53 @@ enum class HdrToysProfile(
 ) {
   BT_2100_PQ(
     configSection = "bt.2100-pq",
-    targetPrim = "bt.2020",
-    targetTrc = "pq",
+    targetPrim = "display-p3",
+    targetTrc = "srgb",
     shaderPaths =
       listOf(
         "hdr-toys/utils/clip_both.glsl",
         "hdr-toys/transfer-function/pq_inv.glsl",
         "hdr-toys/tone-mapping/astra.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "hdr-toys/transfer-function/srgb.glsl",
       ),
     shaderOptions = listOf("auto_exposure_limit_positive" to "1.02"),
   ),
   BT_2100_HLG(
     configSection = "bt.2100-hlg",
-    targetPrim = "bt.2020",
-    targetTrc = "hlg",
+    targetPrim = "display-p3",
+    targetTrc = "srgb",
     shaderPaths =
       listOf(
         "hdr-toys/utils/clip_both.glsl",
         "hdr-toys/transfer-function/hlg_inv.glsl",
         "hdr-toys/tone-mapping/astra.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "hdr-toys/transfer-function/srgb.glsl",
       ),
   ),
   BT_2020(
     configSection = "bt.2020",
-    targetPrim = "bt.2020",
-    targetTrc = "bt.1886",
+    targetPrim = "display-p3",
+    targetTrc = "srgb",
     shaderPaths =
       listOf(
         "hdr-toys/transfer-function/bt1886_inv.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "hdr-toys/transfer-function/srgb.glsl",
       ),
   ),
   LINEAR(
     configSection = "linear",
-    targetPrim = "bt.2020",
-    targetTrc = "linear",
+    targetPrim = "display-p3",
+    targetTrc = "srgb",
     shaderPaths =
       listOf(
         "hdr-toys/utils/clip_black.glsl",
         "hdr-toys/utils/clip_alpha.glsl",
         "hdr-toys/tone-mapping/astra.glsl",
         "hdr-toys/gamut-mapping/bottosson.glsl",
-        "hdr-toys/transfer-function/bt1886.glsl",
+        "hdr-toys/transfer-function/srgb.glsl",
       ),
     shaderOptions =
       listOf(
