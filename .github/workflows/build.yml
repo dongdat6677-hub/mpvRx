@@ -172,6 +172,69 @@ jobs:
             --no-daemon \
             --max-workers=2
 
+      - name: Inspect Kotlin compiler MPVLib inputs
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/inspect-kotlin-inputs.init.gradle <<'EOF'
+          gradle.projectsEvaluated {
+            def app = gradle.rootProject.findProject(":app")
+
+            app.tasks.register("inspectStandardKotlinCompileInputs") {
+              doLast {
+                def kt = app.tasks.getByName(
+                  "compileStandardReleaseKotlin"
+                )
+
+                println "=== KOTLIN COMPILE TASK CLASS ==="
+                println "TASK_CLASS=${kt.class.name}"
+
+                def methods = kt.class.methods.findAll {
+                  it.parameterCount == 0 &&
+                    (
+                      it.name.toLowerCase().contains("libraries") ||
+                      it.name.toLowerCase().contains("classpath")
+                    )
+                }.sort {
+                  it.name
+                }
+
+                println "=== KOTLIN CLASSPATH ACCESSORS ==="
+
+                methods.each { method ->
+                  println "ACCESSOR=${method.name}"
+
+                  try {
+                    def value = method.invoke(kt)
+
+                    if (value instanceof org.gradle.api.file.FileCollection) {
+                      println "COLLECTION=${method.name}"
+
+                      value.files.toList().sort {
+                        it.absolutePath
+                      }.each {
+                        println "KOTLIN_INPUT_FILE=${it.absolutePath}"
+                      }
+                    } else {
+                      println "VALUE_TYPE=${value?.class?.name}"
+                    }
+                  } catch (Throwable error) {
+                    println "ACCESSOR_ERROR=${method.name}:${error.message}"
+                  }
+                }
+              }
+            }
+          }
+          EOF
+
+          ./gradlew \
+            -I /tmp/inspect-kotlin-inputs.init.gradle \
+            :app:inspectStandardKotlinCompileInputs \
+            --no-daemon \
+            --max-workers=2
+
       - name: Diagnose available Gradle unit test tasks
         if: ${{ matrix.distribution.id == 'standard' }}
         shell: bash
