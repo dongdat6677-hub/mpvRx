@@ -1698,9 +1698,40 @@ internal fun observeAdaptiveBandingScore(
         return@withLock false
     }
 
-    val profile = adaptiveDebandController.observe(score) ?: return@withLock true
+val previousLevel = adaptiveDebandController.currentLevel
+val profile = adaptiveDebandController.observe(score)
 
-    applyAdaptiveDebandProfile(profile)
+if (profile == null) {
+    return@withLock true
+}
+
+val newLevel = adaptiveDebandController.currentLevel
+
+Log.i(
+    TAG,
+    "Adaptive Deband level transition: " +
+        "score=$score, from=$previousLevel, to=$newLevel, " +
+        "enabled=${profile.enabled}, " +
+        "iterations=${profile.iterations}, " +
+        "threshold=${profile.threshold}, " +
+        "range=${profile.range}, grain=${profile.grain}"
+)
+
+val applied = applyAdaptiveDebandProfile(profile)
+
+if (applied) {
+    Log.i(
+        TAG,
+        "Adaptive Deband profile applied successfully: level=$newLevel"
+    )
+} else {
+    Log.e(
+        TAG,
+        "Adaptive Deband profile application FAILED: level=$newLevel"
+    )
+}
+
+applied
   }
 
   fun observeProperty(
