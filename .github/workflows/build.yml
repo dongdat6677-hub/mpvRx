@@ -342,6 +342,67 @@ jobs:
             --no-daemon \
             --max-workers=2
 
+      - name: Diagnose duplicate MPVLib classes
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          cat > /tmp/list-mpvlib-artifacts.init.gradle <<'EOF'
+          gradle.projectsEvaluated {
+              def app = gradle.rootProject.project(":app")
+
+              app.tasks.register("listMpvlibArtifacts") {
+                  doLast {
+                      def config = app.configurations.getByName(
+                          "standardReleaseCompileClasspath"
+                      )
+
+                      config.files.toList().sort {
+                          it.absolutePath
+                      }.each {
+                          println "ARTIFACT=${it.absolutePath}"
+                      }
+                  }
+              }
+          }
+          EOF
+
+          ./gradlew \
+            -I /tmp/list-mpvlib-artifacts.init.gradle \
+            :app:listMpvlibArtifacts \
+            --no-daemon \
+            --max-workers=2 \
+            | tee /tmp/mpvlib-artifacts.txt
+
+          echo "=== MPVLIB CLASS DEFINITIONS ==="
+
+          while IFS= read -r artifact; do
+            if [[ "$artifact" == *.aar ]]; then
+              temp_jar="$(mktemp --suffix=.jar)"
+              unzip -p "$artifact" classes.jar > "$temp_jar" || true
+
+              if [[ -s "$temp_jar" ]]; then
+                jar tf "$temp_jar" | grep -E \
+                  '^is/xyz/mpv/(MPVLib|MPVNode)(\$EventObserver)?\.class$' \
+                  | while read -r entry; do
+                      echo "CLASS=$entry"
+                      echo "FOUND_IN=$artifact"
+                    done
+              fi
+
+              rm -f "$temp_jar"
+
+            elif [[ "$artifact" == *.jar ]]; then
+              jar tf "$artifact" | grep -E \
+                '^is/xyz/mpv/(MPVLib|MPVNode)(\$EventObserver)?\.class$' \
+                | while read -r entry; do
+                    echo "CLASS=$entry"
+                    echo "FOUND_IN=$artifact"
+                  done || true
+            fi
+          done < <(sed -n 's/^ARTIFACT=//p' /tmp/mpvlib-artifacts.txt)
+
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
         shell: bash
