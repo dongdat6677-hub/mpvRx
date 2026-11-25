@@ -23,6 +23,7 @@ internal object AdaptiveBandingAnalyzer {
   private const val GREEN_OFFSET = 1
   private const val BLUE_OFFSET = 2
 
+ 
   fun analyze(sample: ByteArray?): Int? {
     if (sample == null || sample.size < HEADER_SIZE) return null
 
@@ -45,131 +46,126 @@ internal object AdaptiveBandingAnalyzer {
 
     if (expectedSize != sample.size.toLong()) return null
 
-    var horizontalCandidates = 0
-    var horizontalTotal = 0
-
     // Analyze horizontal gradients.
     val horizontalWindows =
-  ((width - WINDOW_SIZE) / WINDOW_STRIDE) + 1
+      ((width - WINDOW_SIZE) / WINDOW_STRIDE) + 1
 
-val horizontalCandidates =
-  BooleanArray(height * horizontalWindows)
+    val horizontalCandidates =
+      BooleanArray(height * horizontalWindows)
 
-var horizontalTotal = 0
+    var horizontalTotal = 0
 
-for (y in 0 until height) {
-  val rowStart = HEADER_SIZE + y * width * 3
-  var x = 0
-  var windowIndex = 0
+    for (y in 0 until height) {
+      val rowStart = HEADER_SIZE + y * width * 3
+      var x = 0
+      var windowIndex = 0
 
-  while (x + WINDOW_SIZE <= width) {
-    horizontalTotal++
+      while (x + WINDOW_SIZE <= width) {
+        horizontalTotal++
 
-    val start = rowStart + x * 3
+        val start = rowStart + x * 3
 
-    horizontalCandidates[y * horizontalWindows + windowIndex] =
-      isBandingLikeSegment(sample, start, 3)
+        horizontalCandidates[y * horizontalWindows + windowIndex] =
+          isBandingLikeSegment(sample, start, 3)
 
-    x += WINDOW_STRIDE
-    windowIndex++
-  }
-}
-
-    var verticalCandidates = 0
-    var verticalTotal = 0
+        x += WINDOW_STRIDE
+        windowIndex++
+      }
+    }
 
     // Analyze vertical gradients.
     val verticalWindows =
-  ((height - WINDOW_SIZE) / WINDOW_STRIDE) + 1
+      ((height - WINDOW_SIZE) / WINDOW_STRIDE) + 1
 
-val verticalCandidates =
-  BooleanArray(width * verticalWindows)
+    val verticalCandidates =
+      BooleanArray(width * verticalWindows)
 
-var verticalTotal = 0
+    var verticalTotal = 0
 
-for (x in 0 until width) {
-  var y = 0
-  var windowIndex = 0
+    for (x in 0 until width) {
+      var y = 0
+      var windowIndex = 0
 
-  while (y + WINDOW_SIZE <= height) {
-    verticalTotal++
+      while (y + WINDOW_SIZE <= height) {
+        verticalTotal++
 
-    val start = HEADER_SIZE + (y * width + x) * 3
+        val start = HEADER_SIZE + (y * width + x) * 3
 
-    verticalCandidates[x * verticalWindows + windowIndex] =
-      isBandingLikeSegment(sample, start, width * 3)
+        verticalCandidates[x * verticalWindows + windowIndex] =
+          isBandingLikeSegment(sample, start, width * 3)
 
-    y += WINDOW_STRIDE
-    windowIndex++
-  }
-}
-
-    val horizontalSupported = countSpatiallySupported(
-  horizontalCandidates,
-  height,
-  horizontalWindows,
-)
-
-val verticalSupported = countSpatiallySupported(
-  verticalCandidates,
-  width,
-  verticalWindows,
-)
-
-val total = horizontalTotal + verticalTotal
-
-if (total == 0) return 0
-
-val candidates = horizontalSupported + verticalSupported
-
-return (candidates * 100 / total).coerceIn(0, 100)
-
-private fun countSpatiallySupported(
-  candidates: BooleanArray,
-  lineCount: Int,
-  windowsPerLine: Int,
-): Int {
-  var supported = 0
-
-  for (line in 0 until lineCount) {
-    for (window in 0 until windowsPerLine) {
-      if (!candidates[line * windowsPerLine + window]) {
-        continue
-      }
-
-      var hasNeighbor = false
-
-      val firstLine = maxOf(0, line - 1)
-      val lastLine = minOf(lineCount - 1, line + 1)
-
-      val firstWindow = maxOf(0, window - 1)
-      val lastWindow = minOf(windowsPerLine - 1, window + 1)
-
-      for (neighborLine in firstLine..lastLine) {
-        if (neighborLine == line) continue
-
-        for (neighborWindow in firstWindow..lastWindow) {
-          if (
-            candidates[
-              neighborLine * windowsPerLine + neighborWindow
-            ]
-          ) {
-            hasNeighbor = true
-            break
-          }
-        }
-
-        if (hasNeighbor) break
-      }
-
-      if (hasNeighbor) {
-        supported++
+        y += WINDOW_STRIDE
+        windowIndex++
       }
     }
+
+    val horizontalSupported = countSpatiallySupported(
+      horizontalCandidates,
+      height,
+      horizontalWindows,
+    )
+
+    val verticalSupported = countSpatiallySupported(
+      verticalCandidates,
+      width,
+      verticalWindows,
+    )
+
+    val total = horizontalTotal + verticalTotal
+
+    if (total == 0) return 0
+
+    val candidates = horizontalSupported + verticalSupported
+
+    return (candidates * 100 / total).coerceIn(0, 100)
   }
 
-  return supported
-}
+  private fun countSpatiallySupported(
+    candidates: BooleanArray,
+    lineCount: Int,
+    windowsPerLine: Int,
+  ): Int {
+    var supported = 0
+
+    for (line in 0 until lineCount) {
+      for (window in 0 until windowsPerLine) {
+        if (!candidates[line * windowsPerLine + window]) {
+          continue
+        }
+
+        var hasNeighbor = false
+
+        val firstLine = maxOf(0, line - 1)
+        val lastLine = minOf(lineCount - 1, line + 1)
+
+        val firstWindow = maxOf(0, window - 1)
+        val lastWindow = minOf(windowsPerLine - 1, window + 1)
+
+        for (neighborLine in firstLine..lastLine) {
+          if (neighborLine == line) continue
+
+          for (neighborWindow in firstWindow..lastWindow) {
+            if (
+              candidates[
+                neighborLine * windowsPerLine + neighborWindow
+              ]
+            ) {
+              hasNeighbor = true
+              break
+            }
+          }
+
+          if (hasNeighbor) break
+        }
+
+        if (hasNeighbor) {
+          supported++
+        }
+      }
+    }
+
+    return supported
+  }
 
   private fun isBandingLikeSegment(
     sample: ByteArray,
