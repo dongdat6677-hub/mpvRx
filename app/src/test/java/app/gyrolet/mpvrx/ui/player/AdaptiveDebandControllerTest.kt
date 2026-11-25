@@ -38,12 +38,21 @@ class AdaptiveDebandControllerTest {
   fun `hysteresis prevents upward transition near threshold`() {
     val controller = AdaptiveDebandController()
 
+    // Score 63 should reach MEDIUM, but not HEAVY.
     repeat(3) {
-      assertNull(controller.observe(63))
+      controller.observe(63)
     }
 
-    assertEquals(BandingLevel.NONE, controller.currentLevel)
+    assertEquals(BandingLevel.MEDIUM, controller.currentLevel)
 
+    // Score 64 is below the HEAVY upward threshold of 65.
+    repeat(3) {
+      assertNull(controller.observe(64))
+    }
+
+    assertEquals(BandingLevel.MEDIUM, controller.currentLevel)
+
+    // Score 65 reaches the HEAVY upward threshold.
     repeat(3) {
       controller.observe(65)
     }
