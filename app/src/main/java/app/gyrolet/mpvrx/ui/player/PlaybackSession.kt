@@ -35,6 +35,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -334,6 +335,7 @@ object PlaybackSession : MPVLib.EventObserver {
   private val adaptiveDebandController = AdaptiveDebandController()
   private var adaptiveDebandEnabled = false
   private var adaptiveDebandGeneration = 0L
+  private var adaptiveDebandSamplingJob: Job? = null
   private var loadedAudiobookDurationMs = 0L
   private var loadedAudiobookEnded = false
   private var speedBeforeAudiobook: Float? = null
@@ -1503,6 +1505,8 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       adaptiveDebandController.reset()
       adaptiveDebandGeneration = _state.value.generation
 
+      restartAdaptiveDebandSamplingLocked()
+    
       setOptionString("deband", if (mode == Debanding.GPU) "yes" else "no")
       removeVideoFilter("deband")
     if (mode == Debanding.CPU) command("vf", "add", "@deband:gradfun=radius=12")
@@ -1519,7 +1523,75 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         adaptiveDebandEnabled = enabled
         adaptiveDebandController.reset()
         adaptiveDebandGeneration = _state.value.generation
+
+    restartAdaptiveDebandSamplingLocked()
      }
+  }
+
+  /**
+   * Starts periodic frame sampling while Auto Deband is enabled.
+   * Must be called while nativeLock is held.
+   */
+  private fun restartAdaptiveDebandSamplingLocked() {
+    adaptiveDebandSamplingJob?.cancel()
+    adaptiveDebandSamplingJob = null
+
+    if (!adaptiveDebandEnabled) {
+      Log.i(TAG, "Adaptive Deband sampling stopped")
+      return
+    }
+
+    adaptiveDebandSamplingJob = nativeEvents.launch {
+      Log.i(TAG, "Adaptive Deband sampling started")
+
+      while (true) {
+        val expectedGeneration = nativeLock.withLock {
+          if (adaptiveDebandEnabled && nativeCoreReady) {
+            adaptiveDebandGeneration
+          } else {
+            null
+          }
+        }
+
+        if (expectedGeneration != null) {
+          val sample = captureAdaptiveDebandFrameSample(
+            expectedGeneration
+          )
+
+          if (sample != null) {
+            val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+            if (score != null) {
+              Log.d(
+                TAG,
+                "Adaptive Deband sample analyzed: " +
+                  "generation=$expectedGeneration, " +
+                  "bytes=${sample.size}, score=$score"
+              )
+
+              val accepted = observeAdaptiveBandingScore(
+                expectedGeneration,
+                score
+              )
+
+              Log.d(
+                TAG,
+                "Adaptive Deband score submitted: " +
+                  "generation=$expectedGeneration, " +
+                  "score=$score, accepted=$accepted"
+              )
+            } else {
+              Log.w(
+                TAG,
+                "Adaptive Deband analyzer rejected frame sample"
+              )
+            }
+          }
+        }
+
+        delay(1_000L)
+      }
+    }
   }
 
   /**
