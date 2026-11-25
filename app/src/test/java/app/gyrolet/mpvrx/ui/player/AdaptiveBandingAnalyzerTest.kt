@@ -140,32 +140,32 @@ class AdaptiveBandingAnalyzerTest {
   }
 
   @Test
-fun `rejects horizontal gradient isolated to one row`() {
-  val sample = createRgbSample(32, 32) { x, y ->
-    if (y == 16) {
-      val value = 40 + (x / 3) * 2
-      Triple(value, value, value)
-    } else {
-      Triple(100, 100, 100)
+  fun `rejects horizontal gradient isolated to one row`() {
+    val sample = createRgbSample(32, 32) { x, y ->
+      if (y == 16) {
+        val value = 40 + (x / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(100, 100, 100)
+      }
     }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
   }
 
-  assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
-}
-
-@Test
-fun `rejects vertical gradient isolated to one column`() {
-  val sample = createRgbSample(32, 32) { x, y ->
-    if (x == 16) {
-      val value = 40 + (y / 3) * 2
-      Triple(value, value, value)
-    } else {
-      Triple(100, 100, 100)
+  @Test
+  fun `rejects vertical gradient isolated to one column`() {
+    val sample = createRgbSample(32, 32) { x, y ->
+      if (x == 16) {
+        val value = 40 + (y / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(100, 100, 100)
+      }
     }
-  }
 
-  assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
-}
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
 
   private fun createRgbSample(
     width: Int,
