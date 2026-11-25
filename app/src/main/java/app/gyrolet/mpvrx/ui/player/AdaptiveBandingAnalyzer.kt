@@ -167,110 +167,143 @@ internal object AdaptiveBandingAnalyzer {
     return supported
   }
 
-  private fun isBandingLikeSegment(
-    sample: ByteArray,
-    start: Int,
-    stride: Int,
-  ): Boolean {
-    return isQuantizedGradient(
+private fun isBandingLikeSegment(
+  sample: ByteArray,
+  start: Int,
+  stride: Int,
+): Boolean {
+  return getBandingSignature(sample, start, stride) != 0
+}
+
+/**
+ * Returns a packed gradient signature.
+ *
+ * 0 means the segment does not match the current
+ * quantized-gradient heuristic.
+ *
+ * Bit layout:
+ *  0-1   : direction
+ *  2-7   : amplitude
+ *  8-11  : flat steps
+ * 12-15  : changing steps
+ * 16-19  : first transition position
+ * 20-23  : last transition position
+ */
+private fun getBandingSignature(
+  sample: ByteArray,
+  start: Int,
+  stride: Int,
+): Int {
+  for (channel in 0..3) {
+    val signature = analyzeGradientChannel(
       sample,
       start,
       stride,
-      0,
-    ) ||
-      isQuantizedGradient(
-        sample,
-        start,
-        stride,
-        1,
-      ) ||
-      isQuantizedGradient(
-        sample,
-        start,
-        stride,
-        2,
-      ) ||
-      isQuantizedGradient(
-        sample,
-        start,
-        stride,
-        3,
-      )
+      channel,
+    )
+
+    if (signature != 0) {
+      return signature
+    }
   }
 
-  /**
-   * Channel:
-   * 0 = luminance
-   * 1 = red
-   * 2 = green
-   * 3 = blue
-   */
-  private fun isQuantizedGradient(
-    sample: ByteArray,
-    start: Int,
-    stride: Int,
-    channel: Int,
-  ): Boolean {
-    var minimum = 255
-    var maximum = 0
-    var flatSteps = 0
-    var changingSteps = 0
-    var direction = 0
-    var directionChanges = 0
+  return 0
+}
 
-    var previous = -1
+/**
+ * Channel:
+ * 0 = luminance
+ * 1 = red
+ * 2 = green
+ * 3 = blue
+ */
+private fun analyzeGradientChannel(
+  sample: ByteArray,
+  start: Int,
+  stride: Int,
+  channel: Int,
+): Int {
+  var minimum = 255
+  var maximum = 0
+  var flatSteps = 0
+  var changingSteps = 0
+  var direction = 0
+  var directionChanges = 0
+  var firstTransition = -1
+  var lastTransition = -1
 
-    for (i in 0 until WINDOW_SIZE) {
-      val offset = start + i * stride
+  var previous = -1
 
-      val red = sample[offset + RED_OFFSET].toInt() and 0xFF
-      val green = sample[offset + GREEN_OFFSET].toInt() and 0xFF
-      val blue = sample[offset + BLUE_OFFSET].toInt() and 0xFF
+  for (i in 0 until WINDOW_SIZE) {
+    val offset = start + i * stride
 
-      val value = when (channel) {
-        0 -> (77 * red + 150 * green + 29 * blue) shr 8
-        1 -> red
-        2 -> green
-        else -> blue
-      }
+    val red = sample[offset + RED_OFFSET].toInt() and 0xFF
+    val green = sample[offset + GREEN_OFFSET].toInt() and 0xFF
+    val blue = sample[offset + BLUE_OFFSET].toInt() and 0xFF
 
-      minimum = minOf(minimum, value)
-      maximum = maxOf(maximum, value)
-
-      if (i == 0) {
-        previous = value
-        continue
-      }
-
-      val difference = value - previous
-      val magnitude = kotlin.math.abs(difference)
-
-      if (magnitude <= 1) {
-        flatSteps++
-        previous = value
-        continue
-      }
-
-      // Reject strong transitions that are more likely to be object edges.
-      if (magnitude > 8) return false
-
-      changingSteps++
-
-      val currentDirection = if (difference > 0) 1 else -1
-
-      if (direction != 0 && currentDirection != direction) {
-        directionChanges++
-      }
-
-      direction = currentDirection
-      previous = value
+    val value = when (channel) {
+      0 -> (77 * red + 150 * green + 29 * blue) shr 8
+      1 -> red
+      2 -> green
+      else -> blue
     }
 
-    val range = maximum - minimum
+    minimum = minOf(minimum, value)
+    maximum = maxOf(maximum, value)
 
-    return range in 4..40 &&
-      flatSteps >= 5 &&
-      changingSteps in 2..7 &&
-      directionChanges <= 1
+    if (i == 0) {
+      previous = value
+      continue
+    }
+
+    val difference = value - previous
+    val magnitude = kotlin.math.abs(difference)
+
+    if (magnitude <= 1) {
+      flatSteps++
+      previous = value
+      continue
+    }
+
+    if (magnitude > 8) return 0
+
+    changingSteps++
+
+    if (firstTransition == -1) {
+      firstTransition = i
+    }
+
+    lastTransition = i
+
+    val currentDirection = if (difference > 0) 1 else -1
+
+    if (direction != 0 && currentDirection != direction) {
+      directionChanges++
+    }
+
+    direction = currentDirection
+    previous = value
   }
+
+  val amplitude = maximum - minimum
+
+  if (
+    amplitude !in 4..40 ||
+    flatSteps < 5 ||
+    changingSteps !in 2..7 ||
+    directionChanges > 1
+  ) {
+    return 0
+  }
+
+  val encodedDirection = if (direction > 0) 1 else 2
+
+  return encodedDirection or
+    (amplitude shl 2) or
+    (flatSteps shl 8) or
+    (changingSteps shl 12) or
+    (firstTransition shl 16) or
+    (lastTransition shl 20)
+}
+
 }
