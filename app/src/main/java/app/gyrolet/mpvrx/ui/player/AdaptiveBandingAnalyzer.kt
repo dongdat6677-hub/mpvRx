@@ -202,7 +202,7 @@ private fun areSignaturesSimilar(
   val secondTransitionStart = (second ushr 16) and 0xF
 
   if (
-    kotlin.math.abs(firstTransitionStart - secondTransitionStart) > 2
+    kotlin.math.abs(firstTransitionStart - secondTransitionStart) > 0
   ) {
     return false
   }
@@ -211,7 +211,7 @@ private fun areSignaturesSimilar(
   val secondTransitionEnd = (second ushr 20) and 0xF
 
   if (
-    kotlin.math.abs(firstTransitionEnd - secondTransitionEnd) > 2
+    kotlin.math.abs(firstTransitionEnd - secondTransitionEnd) > 0
   ) {
     return false
   }
