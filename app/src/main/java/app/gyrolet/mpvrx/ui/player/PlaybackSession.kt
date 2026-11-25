@@ -1590,12 +1590,18 @@ internal fun captureAdaptiveDebandFrameSample(
     return@withLock null
   }
 
+  val sampleMethod = runCatching {
+    MPVLib::class.java.getMethod(
+      "grabFrameSample",
+      Int::class.javaPrimitiveType!!
+    )
+  }.getOrNull() ?: return@withLock null
+
   runCatching {
-    MPVLib.grabFrameSample(maxDimension)
+    sampleMethod.invoke(MPVLib, maxDimension) as? ByteArray
   }.onFailure { error ->
     Log.w(TAG, "Adaptive deband frame sampling failed", error)
   }.getOrNull()
-}
 
   /**
  * Submits a banding analysis score for the active playback generation.
