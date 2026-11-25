@@ -19,18 +19,9 @@ internal object AdaptiveBandingAnalyzer {
   private const val WINDOW_SIZE = 12
   private const val WINDOW_STRIDE = 4
 
-  private data class Pixel(
-    val red: Int,
-    val green: Int,
-    val blue: Int,
-    val luma: Int,
-  )
-
-  private data class SegmentResult(
-    val candidate: Boolean,
-    val direction: Int,
-    val range: Int,
-  )
+  private const val RED_OFFSET = 0
+  private const val GREEN_OFFSET = 1
+  private const val BLUE_OFFSET = 2
 
   fun analyze(sample: ByteArray?): Int? {
     if (sample == null || sample.size < HEADER_SIZE) return null
@@ -51,35 +42,23 @@ internal object AdaptiveBandingAnalyzer {
     }
 
     val expectedSize = HEADER_SIZE.toLong() + width.toLong() * height * 3L
+
     if (expectedSize != sample.size.toLong()) return null
-
-    val pixels = Array(width * height) {
-      val offset = HEADER_SIZE + it * 3
-
-      val red = sample[offset].toInt() and 0xFF
-      val green = sample[offset + 1].toInt() and 0xFF
-      val blue = sample[offset + 2].toInt() and 0xFF
-
-      Pixel(
-        red = red,
-        green = green,
-        blue = blue,
-        luma = (77 * red + 150 * green + 29 * blue) shr 8,
-      )
-    }
 
     var horizontalCandidates = 0
     var horizontalTotal = 0
 
-    // Horizontal gradient analysis.
+    // Analyze horizontal gradients.
     for (y in 0 until height) {
-      val rowStart = y * width
+      val rowStart = HEADER_SIZE + y * width * 3
       var x = 0
 
       while (x + WINDOW_SIZE <= width) {
         horizontalTotal++
 
-        if (isBandingLikeSegment(pixels, rowStart + x, 1)) {
+        val start = rowStart + x * 3
+
+        if (isBandingLikeSegment(sample, start, 3)) {
           horizontalCandidates++
         }
 
@@ -90,14 +69,16 @@ internal object AdaptiveBandingAnalyzer {
     var verticalCandidates = 0
     var verticalTotal = 0
 
-    // Vertical gradient analysis.
+    // Analyze vertical gradients.
     for (x in 0 until width) {
       var y = 0
 
       while (y + WINDOW_SIZE <= height) {
         verticalTotal++
 
-        if (isBandingLikeSegment(pixels, y * width + x, width)) {
+        val start = HEADER_SIZE + (y * width + x) * 3
+
+        if (isBandingLikeSegment(sample, start, width * 3)) {
           verticalCandidates++
         }
 
@@ -106,6 +87,7 @@ internal object AdaptiveBandingAnalyzer {
     }
 
     val total = horizontalTotal + verticalTotal
+
     if (total == 0) return 0
 
     val candidates = horizontalCandidates + verticalCandidates
@@ -114,31 +96,49 @@ internal object AdaptiveBandingAnalyzer {
   }
 
   private fun isBandingLikeSegment(
-    pixels: Array<Pixel>,
+    sample: ByteArray,
     start: Int,
     stride: Int,
   ): Boolean {
-    val channels = Array(4) { IntArray(WINDOW_SIZE) }
-
-    for (i in 0 until WINDOW_SIZE) {
-      val pixel = pixels[start + i * stride]
-
-      channels[0][i] = pixel.luma
-      channels[1][i] = pixel.red
-      channels[2][i] = pixel.green
-      channels[3][i] = pixel.blue
-    }
-
-    // A candidate is detected when at least one color representation
-    // contains a quantized, approximately monotonic gradient.
-    for (channel in channels) {
-      if (isQuantizedGradient(channel)) return true
-    }
-
-    return false
+    return isQuantizedGradient(
+      sample,
+      start,
+      stride,
+      0,
+    ) ||
+      isQuantizedGradient(
+        sample,
+        start,
+        stride,
+        1,
+      ) ||
+      isQuantizedGradient(
+        sample,
+        start,
+        stride,
+        2,
+      ) ||
+      isQuantizedGradient(
+        sample,
+        start,
+        stride,
+        3,
+      )
   }
 
-  private fun isQuantizedGradient(values: IntArray): Boolean {
+  /**
+   * Channel:
+   * 0 = luminance
+   * 1 = red
+   * 2 = green
+   * 3 = blue
+   */
+  private fun isQuantizedGradient(
+    sample: ByteArray,
+    start: Int,
+    stride: Int,
+    channel: Int,
+  ): Boolean {
     var minimum = 255
     var maximum = 0
     var flatSteps = 0
@@ -146,22 +146,40 @@ internal object AdaptiveBandingAnalyzer {
     var direction = 0
     var directionChanges = 0
 
-    for (i in values.indices) {
-      val value = values[i]
+    var previous = -1
+
+    for (i in 0 until WINDOW_SIZE) {
+      val offset = start + i * stride
+
+      val red = sample[offset + RED_OFFSET].toInt() and 0xFF
+      val green = sample[offset + GREEN_OFFSET].toInt() and 0xFF
+      val blue = sample[offset + BLUE_OFFSET].toInt() and 0xFF
+
+      val value = when (channel) {
+        0 -> (77 * red + 150 * green + 29 * blue) shr 8
+        1 -> red
+        2 -> green
+        else -> blue
+      }
+
       minimum = minOf(minimum, value)
       maximum = maxOf(maximum, value)
 
-      if (i == 0) continue
+      if (i == 0) {
+        previous = value
+        continue
+      }
 
-      val difference = value - values[i - 1]
+      val difference = value - previous
       val magnitude = kotlin.math.abs(difference)
 
       if (magnitude <= 1) {
         flatSteps++
+        previous = value
         continue
       }
 
-      // Reject strong edges and abrupt transitions.
+      // Reject strong transitions that are more likely to be object edges.
       if (magnitude > 8) return false
 
       changingSteps++
@@ -173,6 +191,7 @@ internal object AdaptiveBandingAnalyzer {
       }
 
       direction = currentDirection
+      previous = value
     }
 
     val range = maximum - minimum
