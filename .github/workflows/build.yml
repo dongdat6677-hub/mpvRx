@@ -286,57 +286,61 @@ jobs:
           echo "=== AVAILABLE UNIT TEST TASKS ==="
           grep -Ei 'UnitTest|unitTest' /tmp/mpvrx-gradle-tasks.txt || true
 
-      - name: Inspect KotlinCompile source accessors
+      - name: Inspect KotlinCompile resolved source inputs
         if: ${{ matrix.distribution.id == 'standard' }}
         shell: bash
         run: |
           set -euo pipefail
 
-          cat > /tmp/inspect-kotlin-source-accessors.init.gradle <<'EOF'
+          cat > /tmp/inspect-kotlin-resolved-sources.init.gradle <<'EOF'
           gradle.projectsEvaluated {
               def app = gradle.rootProject.project(":app")
-              def task = app.tasks.findByName("compileStandardReleaseKotlin")
+              def compileTask = app.tasks.getByName(
+                  "compileStandardReleaseKotlin"
+              )
 
-              println("=== TASK CLASS ===")
-              println(task.class.name)
+              app.tasks.register("inspectStandardResolvedKotlinSources") {
+                  dependsOn compileTask.taskDependencies
 
-              println("=== SOURCE AND INPUT ACCESSORS ===")
-              task.class.methods
-                  .findAll {
-                      it.parameterCount == 0 &&
-                      (
-                          it.name.toLowerCase().contains("source") ||
-                          it.name.toLowerCase().contains("input") ||
-                          it.name.toLowerCase().contains("kotlin")
-                      )
-                  }
-                  .sort { it.name }
-                  .each {
-                      try {
-                          def value = it.invoke(task)
-                          println("ACCESSOR=${it.name}")
-                          println("RETURN_TYPE=${it.returnType.name}")
-                          println("VALUE_TYPE=${value == null ? 'null' : value.getClass().name}")
+                  doLast {
+                      println "=== KOTLIN COMPILE TASK ==="
+                      println "TASK_CLASS=${compileTask.class.name}"
 
-                          if (value instanceof Iterable) {
-                              value.each { item ->
-                                  def path = item.hasProperty("asFile")
-                                      ? item.asFile.absolutePath
-                                      : item.toString()
-                                  if (path.contains("PlaybackSession") ||
-                                      path.contains("App.kt")) {
-                                      println("SOURCE_ITEM=" + path)
-                                  }
-                              }
-                          }
-                      } catch (Throwable error) {
-                          println("ACCESSOR_ERROR=${it.name}: ${error.class.name}: ${error.message}")
+                      def files = compileTask.inputs.files.files
+                          .toList()
+                          .sort { it.absolutePath }
+
+                      def kotlinFiles = files.findAll {
+                          it.name.endsWith(".kt")
+                      }
+
+                      println "=== KOTLIN SOURCE INPUT COUNT ==="
+                      println "KOTLIN_SOURCE_COUNT=${kotlinFiles.size()}"
+
+                      println "=== TARGET SOURCE FILES ==="
+                      kotlinFiles.findAll {
+                          it.name == "PlaybackSession.kt" ||
+                          it.name == "App.kt" ||
+                          it.name == "SubtitleOps.kt" ||
+                          it.name == "YtdlpManager.kt"
+                      }.each {
+                          println "KOTLIN_SOURCE=${it.absolutePath}"
+                      }
+
+                      println "=== ALL KOTLIN SOURCE DIRECTORIES ==="
+                      kotlinFiles.each {
+                          println "KOTLIN_FILE=${it.absolutePath}"
                       }
                   }
+              }
           }
           EOF
 
-          ./gradlew -I /tmp/inspect-kotlin-source-accessors.init.gradle help
+          ./gradlew \
+            -I /tmp/inspect-kotlin-resolved-sources.init.gradle \
+            :app:inspectStandardResolvedKotlinSources \
+            --no-daemon \
+            --max-workers=2
 
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
