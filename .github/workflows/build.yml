@@ -405,6 +405,38 @@ jobs:
 
           echo "=== MPVLIB CLASS SCAN COMPLETED ==="
 
+      - name: Diagnose PlaybackSession declarations
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== RUN KSP ==="
+          ./gradlew :app:kspStandardReleaseKotlin \
+            --no-daemon \
+            --max-workers=2
+
+          echo "=== PLAYBACKSESSION DECLARATIONS ==="
+          find app/src app/build/generated \
+            -type f -name '*.kt' -print0 \
+            | xargs -0 grep -nHE \
+              '(^|[[:space:]])(object|class|interface|typealias)[[:space:]]+PlaybackSession([[:space:]]|:|=|$)' \
+            || true
+
+          echo "=== PLAYBACKSESSION MEMBER DECLARATIONS ==="
+          grep -nE \
+            '^[[:space:]]*(internal[[:space:]]+|private[[:space:]]+)?fun[[:space:]]+(setPropertyBoolean|getPropertyBoolean|getPropertyString|setOptionString|observeProperty)[[:space:]]*\(' \
+            app/src/main/java/app/gyrolet/mpvrx/ui/player/PlaybackSession.kt \
+            || true
+
+          echo "=== APP IMPORT ==="
+          grep -nE \
+            'import .*PlaybackSession|PlaybackSession\.setPropertyBoolean' \
+            app/src/main/java/app/gyrolet/mpvrx/App.kt \
+            || true
+
+          echo "=== DIAGNOSTIC COMPLETED ==="
+
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
         shell: bash
