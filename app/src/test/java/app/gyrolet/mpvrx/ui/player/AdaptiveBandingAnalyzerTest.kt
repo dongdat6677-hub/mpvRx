@@ -125,6 +125,35 @@ class AdaptiveBandingAnalyzerTest {
   }
 
   @Test
+  fun `rejects low contrast object edge isolated to one row`() {
+    val sample = createRgbSample(32, 32) { x, y ->
+      if (y == 16) {
+        val value = 80 + (x / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(90, 90, 90)
+      }
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
+  @Test
+  fun `detects low contrast stepped gradient across parallel rows`() {
+    val sample = createRgbSample(32, 32) { x, _ ->
+      val value = 80 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+    assertTrue(
+      "Expected low-contrast banding to be detected, got $score",
+      score != null && score > 0,
+    )
+  }
+
+  @Test
   fun `detects vertical stepped gradient`() {
     val sample = createRgbSample(16, 32) { _, y ->
       val value = 40 + (y / 3) * 2
