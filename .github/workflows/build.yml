@@ -235,6 +235,48 @@ jobs:
             --no-daemon \
             --max-workers=2
 
+      - name: Inspect transformed MPVLib API jar
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== ORIGINAL AAR CLASSES ==="
+          unzip -p app/libs/mpvlib-patched.aar classes.jar > /tmp/mpvlib-original-classes.jar
+
+          echo "=== ORIGINAL MPVLib METHODS ==="
+          javap -classpath /tmp/mpvlib-original-classes.jar -p is.xyz.mpv.MPVLib
+
+          echo "=== FIND TRANSFORMED API JAR ==="
+          find "$HOME/.gradle/caches/9.8.2/transforms" \
+            -type f \
+            -name 'mpvlib-patched-api.jar' \
+            -print
+
+          mapfile -t api_jars < <(
+            find "$HOME/.gradle/caches/9.8.2/transforms" \
+              -type f \
+              -name 'mpvlib-patched-api.jar'
+          )
+
+          if [[ "${#api_jars[@]}" -ne 1 ]]; then
+            echo "Expected exactly one transformed MPVLib API jar."
+            echo "FOUND=${#api_jars[@]}"
+            exit 1
+          fi
+
+          API_JAR="${api_jars[0]}"
+
+          echo "=== TRANSFORMED API JAR ==="
+          echo "API_JAR=$API_JAR"
+          ls -lh "$API_JAR"
+
+          echo "=== TRANSFORMED MPVLib METHODS ==="
+          javap -classpath "$API_JAR" -p is.xyz.mpv.MPVLib
+
+          echo "=== TRANSFORMED MPVLib CLASS ENTRIES ==="
+          jar tf "$API_JAR" | grep -E '(^|/)MPVLib(\$[^/]*)?\.class$' || true
+
       - name: Diagnose available Gradle unit test tasks
         if: ${{ matrix.distribution.id == 'standard' }}
         shell: bash
