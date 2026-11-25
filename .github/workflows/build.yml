@@ -285,7 +285,14 @@ jobs:
           ./gradlew :app:tasks --all --no-daemon --max-workers=2 | tee /tmp/mpvrx-gradle-tasks.txt
           echo "=== AVAILABLE UNIT TEST TASKS ==="
           grep -Ei 'UnitTest|unitTest' /tmp/mpvrx-gradle-tasks.txt || true
-
+     
+      - name: Run Standard debug unit tests
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :app:testStandardDebugUnitTest --no-daemon --max-workers=2
+          
       - name: Inspect KotlinCompile resolved source inputs
         if: ${{ matrix.distribution.id == 'standard' }}
         shell: bash
