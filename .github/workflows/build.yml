@@ -286,6 +286,48 @@ jobs:
           echo "=== AVAILABLE UNIT TEST TASKS ==="
           grep -Ei 'UnitTest|unitTest' /tmp/mpvrx-gradle-tasks.txt || true
 
+      - name: Inspect PlaybackSession Kotlin source input
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "=== SOURCE FILES IN REPOSITORY ==="
+          find app/src -type f -name 'PlaybackSession.kt' -print
+
+          echo "=== METHOD DECLARATION ==="
+          grep -n -B 5 -A 12 \
+            'fun setPropertyBoolean' \
+            app/src/main/java/app/gyrolet/mpvrx/ui/player/PlaybackSession.kt
+
+          echo "=== APP CALL SITE ==="
+          grep -n -B 5 -A 5 \
+            'PlaybackSession.setPropertyBoolean' \
+            app/src/main/java/app/gyrolet/mpvrx/App.kt
+
+          echo "=== GRADLE KOTLIN TASK SOURCE INPUTS ==="
+          cat > /tmp/inspect-kotlin-sources.init.gradle <<'EOF'
+          gradle.projectsEvaluated {
+              def app = gradle.rootProject.project(":app")
+              def task = app.tasks.findByName("compileStandardReleaseKotlin")
+
+              println("TASK_CLASS=" + task.class.name)
+
+              try {
+                  task.source.files.sort().each {
+                      if (it.name.contains("PlaybackSession") ||
+                          it.name.contains("App.kt")) {
+                          println("KOTLIN_SOURCE_INPUT=" + it.absolutePath)
+                      }
+                  }
+              } catch (Throwable error) {
+                  println("SOURCE_INSPECTION_ERROR=" + error)
+              }
+          }
+          EOF
+
+          ./gradlew -I /tmp/inspect-kotlin-sources.init.gradle help
+
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
         shell: bash
