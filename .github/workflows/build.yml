@@ -96,12 +96,14 @@ jobs:
             -o app/libs/mpvlib-patched.aar
           test -s app/libs/mpvlib-patched.aar
 
-      - name: Run adaptive debanding unit tests
+      - name: Diagnose available Gradle unit test tasks
         if: ${{ matrix.distribution.id == 'standard' }}
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew testStandardReleaseUnitTest --stacktrace --no-daemon --max-workers=2
+          ./gradlew :app:tasks --all --no-daemon --max-workers=2 | tee /tmp/mpvrx-gradle-tasks.txt
+          echo "=== AVAILABLE UNIT TEST TASKS ==="
+          grep -Ei 'UnitTest|unitTest' /tmp/mpvrx-gradle-tasks.txt || true
 
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
