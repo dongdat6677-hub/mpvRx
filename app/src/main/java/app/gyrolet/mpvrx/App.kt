@@ -45,6 +45,7 @@ import app.gyrolet.mpvrx.ui.player.MediaPlayerWidget
 import app.gyrolet.mpvrx.ui.player.PlaybackActivityOwner
 import app.gyrolet.mpvrx.ui.player.PlaybackPhase
 import app.gyrolet.mpvrx.ui.player.PlaybackPerformanceTrace
+import app.gyrolet.mpvrx.ui.player.PlaybackSessionState
 import app.gyrolet.mpvrx.ui.player.PlaybackSession
 import app.gyrolet.mpvrx.ui.player.GpuPerformanceController
 import app.gyrolet.mpvrx.ui.player.PlayerActivity
@@ -292,19 +293,25 @@ class App :
     applicationScope.launch {
       val repository = getKoin().get<app.gyrolet.mpvrx.repository.WatchStatsRepository>()
       var lastSessionKey: Triple<Long, Long, String>? = null
-      combine(
-        PlaybackSession.state,
-        PlaybackSession.propBoolean["core-idle"],
-        PlaybackSession.propBoolean["paused-for-cache"],
-        repository.resetVersion,
-      ) { state, coreIdle, pausedForCache, resetVersion ->
-        WatchTrackingState(
-          item = state.currentItem,
-          generation = state.generation,
-          phase = state.phase,
-          paused = state.paused,
-          stalled = coreIdle == true || pausedForCache == true,
-          resetVersion = resetVersion,
+      combine<
+         PlaybackSessionState,
+         Boolean?,
+         Boolean?,
+         Long,
+         WatchTrackingState
+        >(
+           PlaybackSession.state,
+           PlaybackSession.propBoolean["core-idle"],
+           PlaybackSession.propBoolean["paused-for-cache"],
+           repository.resetVersion,
+        ) { state, coreIdle, pausedForCache, resetVersion ->
+         WatchTrackingState(
+           item = state.currentItem,
+           generation = state.generation,
+           phase = state.phase,
+           paused = state.paused,
+           stalled = coreIdle == true || pausedForCache == true,
+           resetVersion = resetVersion,
         )
       }
         .distinctUntilChanged()
