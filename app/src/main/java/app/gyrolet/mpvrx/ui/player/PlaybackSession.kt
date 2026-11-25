@@ -1602,7 +1602,7 @@ internal fun captureAdaptiveDebandFrameSample(
   }.onFailure { error ->
     Log.w(TAG, "Adaptive deband frame sampling failed", error)
   }.getOrNull()
-
+}
   /**
  * Submits a banding analysis score for the active playback generation.
  *
