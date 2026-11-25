@@ -1556,6 +1556,47 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
 
+/**
+ * Captures a compact frame sample for adaptive debanding analysis.
+ *
+ * Sampling is allowed only while the current video is actively playing
+ * with a ready renderer. The native call is serialized with core teardown
+ * by nativeLock.
+ */
+internal fun captureAdaptiveDebandFrameSample(
+  expectedGeneration: Long,
+  maxDimension: Int = 96,
+): ByteArray? = nativeLock.withLock {
+  val current = _state.value
+
+  if (
+    !adaptiveDebandEnabled ||
+    !initialized ||
+    !nativeCoreReady ||
+    expectedGeneration != adaptiveDebandGeneration ||
+    expectedGeneration != current.generation ||
+    loadedGeneration != expectedGeneration ||
+    current.phase != PlaybackPhase.READY ||
+    current.paused ||
+    current.isBuffering ||
+    !current.surfaceAttached ||
+    !rendererOutputReady
+  ) {
+    return@withLock null
+  }
+
+  val videoTrack = MPVLib.getPropertyString("vid")?.toIntOrNull()
+  if (videoTrack == null || videoTrack <= 0) {
+    return@withLock null
+  }
+
+  runCatching {
+    MPVLib.grabFrameSample(maxDimension)
+  }.onFailure { error ->
+    Log.w(TAG, "Adaptive deband frame sampling failed", error)
+  }.getOrNull()
+}
+
   /**
  * Submits a banding analysis score for the active playback generation.
  *
