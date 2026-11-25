@@ -335,7 +335,7 @@ private fun analyzeGradientChannel(
     amplitude !in 4..40 ||
     flatSteps < 5 ||
     changingSteps !in 2..7 ||
-    directionChanges > 1
+    directionChanges > 0
   ) {
     return 0
   }
