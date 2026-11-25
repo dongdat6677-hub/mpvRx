@@ -138,6 +138,23 @@ class AdaptiveBandingAnalyzerTest {
     assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
   }
 
+@Test
+fun `rejects diagonal low contrast object edge`() {
+  val sample = createRgbSample(48, 48) { x, y ->
+    val distance = x - y
+
+    val value = when {
+      distance <= -3 -> 80
+      distance >= 3 -> 92
+      else -> 80 + (distance + 3) * 2
+    }
+
+    Triple(value, value, value)
+  }
+
+  assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+}
+
   @Test
   fun `detects low contrast stepped gradient across parallel rows`() {
     val sample = createRgbSample(32, 32) { x, _ ->
