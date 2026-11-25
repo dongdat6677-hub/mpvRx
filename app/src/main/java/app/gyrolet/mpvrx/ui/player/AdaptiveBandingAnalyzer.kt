@@ -50,8 +50,8 @@ internal object AdaptiveBandingAnalyzer {
     val horizontalWindows =
       ((width - WINDOW_SIZE) / WINDOW_STRIDE) + 1
 
-    val horizontalCandidates =
-      BooleanArray(height * horizontalWindows)
+    val horizontalSignatures =
+      IntArray(height * horizontalWindows)
 
     var horizontalTotal = 0
 
@@ -65,8 +65,8 @@ internal object AdaptiveBandingAnalyzer {
 
         val start = rowStart + x * 3
 
-        horizontalCandidates[y * horizontalWindows + windowIndex] =
-          isBandingLikeSegment(sample, start, 3)
+        horizontalSignatures[y * horizontalWindows + windowIndex] =
+          getBandingSignature(sample, start, 3)
 
         x += WINDOW_STRIDE
         windowIndex++
@@ -77,8 +77,8 @@ internal object AdaptiveBandingAnalyzer {
     val verticalWindows =
       ((height - WINDOW_SIZE) / WINDOW_STRIDE) + 1
 
-    val verticalCandidates =
-      BooleanArray(width * verticalWindows)
+    val verticalSignatures =
+      IntArray(width * verticalWindows)
 
     var verticalTotal = 0
 
@@ -91,8 +91,8 @@ internal object AdaptiveBandingAnalyzer {
 
         val start = HEADER_SIZE + (y * width + x) * 3
 
-        verticalCandidates[x * verticalWindows + windowIndex] =
-          isBandingLikeSegment(sample, start, width * 3)
+        verticalSignatures[x * verticalWindows + windowIndex] =
+          getBandingSignature(sample, start, width * 3)
 
         y += WINDOW_STRIDE
         windowIndex++
@@ -100,13 +100,13 @@ internal object AdaptiveBandingAnalyzer {
     }
 
     val horizontalSupported = countSpatiallySupported(
-      horizontalCandidates,
+      horizontalSignatures,
       height,
       horizontalWindows,
     )
 
     val verticalSupported = countSpatiallySupported(
-      verticalCandidates,
+      verticalSignatures,
       width,
       verticalWindows,
     )
@@ -120,52 +120,52 @@ internal object AdaptiveBandingAnalyzer {
     return (candidates * 100 / total).coerceIn(0, 100)
   }
 
-  private fun countSpatiallySupported(
-    candidates: BooleanArray,
-    lineCount: Int,
-    windowsPerLine: Int,
-  ): Int {
-    var supported = 0
+private fun countSpatiallySupported(
+  signatures: IntArray,
+  lineCount: Int,
+  windowsPerLine: Int,
+): Int {
+  var supported = 0
 
-    for (line in 0 until lineCount) {
-      for (window in 0 until windowsPerLine) {
-        if (!candidates[line * windowsPerLine + window]) {
-          continue
-        }
+  for (line in 0 until lineCount) {
+    for (window in 0 until windowsPerLine) {
+      if (signatures[line * windowsPerLine + window] == 0) {
+        continue
+      }
 
-        var hasNeighbor = false
+      var hasNeighbor = false
 
-        val firstLine = maxOf(0, line - 1)
-        val lastLine = minOf(lineCount - 1, line + 1)
+      val firstLine = maxOf(0, line - 1)
+      val lastLine = minOf(lineCount - 1, line + 1)
 
-        val firstWindow = maxOf(0, window - 1)
-        val lastWindow = minOf(windowsPerLine - 1, window + 1)
+      val firstWindow = maxOf(0, window - 1)
+      val lastWindow = minOf(windowsPerLine - 1, window + 1)
 
-        for (neighborLine in firstLine..lastLine) {
-          if (neighborLine == line) continue
+      for (neighborLine in firstLine..lastLine) {
+        if (neighborLine == line) continue
 
-          for (neighborWindow in firstWindow..lastWindow) {
-            if (
-              candidates[
-                neighborLine * windowsPerLine + neighborWindow
-              ]
-            ) {
-              hasNeighbor = true
-              break
-            }
+        for (neighborWindow in firstWindow..lastWindow) {
+          if (
+            signatures[
+              neighborLine * windowsPerLine + neighborWindow
+            ] != 0
+          ) {
+            hasNeighbor = true
+            break
           }
-
-          if (hasNeighbor) break
         }
 
-        if (hasNeighbor) {
-          supported++
-        }
+        if (hasNeighbor) break
+      }
+
+      if (hasNeighbor) {
+        supported++
       }
     }
-
-    return supported
   }
+
+  return supported
+}
 
 private fun isBandingLikeSegment(
   sample: ByteArray,
