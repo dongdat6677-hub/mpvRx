@@ -129,11 +129,11 @@ private fun countSpatiallySupported(
 
   for (line in 0 until lineCount) {
     for (window in 0 until windowsPerLine) {
-      if (signatures[line * windowsPerLine + window] == 0) {
-        continue
-      }
+      val current = signatures[line * windowsPerLine + window]
 
-      var hasNeighbor = false
+      if (current == 0) continue
+
+      var hasSimilarNeighbor = false
 
       val firstLine = maxOf(0, line - 1)
       val lastLine = minOf(lineCount - 1, line + 1)
@@ -145,20 +145,21 @@ private fun countSpatiallySupported(
         if (neighborLine == line) continue
 
         for (neighborWindow in firstWindow..lastWindow) {
-          if (
-            signatures[
-              neighborLine * windowsPerLine + neighborWindow
-            ] != 0
-          ) {
-            hasNeighbor = true
+          val neighbor =
+            signatures[neighborLine * windowsPerLine + neighborWindow]
+
+          if (neighbor == 0) continue
+
+          if (areSignaturesSimilar(current, neighbor)) {
+            hasSimilarNeighbor = true
             break
           }
         }
 
-        if (hasNeighbor) break
+        if (hasSimilarNeighbor) break
       }
 
-      if (hasNeighbor) {
+      if (hasSimilarNeighbor) {
         supported++
       }
     }
@@ -167,12 +168,55 @@ private fun countSpatiallySupported(
   return supported
 }
 
-private fun isBandingLikeSegment(
-  sample: ByteArray,
-  start: Int,
-  stride: Int,
+private fun areSignaturesSimilar(
+  first: Int,
+  second: Int,
 ): Boolean {
-  return getBandingSignature(sample, start, stride) != 0
+  val firstDirection = first and 0x3
+  val secondDirection = second and 0x3
+
+  if (firstDirection != secondDirection) return false
+
+  val firstAmplitude = (first ushr 2) and 0x3F
+  val secondAmplitude = (second ushr 2) and 0x3F
+
+  if (kotlin.math.abs(firstAmplitude - secondAmplitude) > 6) {
+    return false
+  }
+
+  val firstFlatSteps = (first ushr 8) and 0xF
+  val secondFlatSteps = (second ushr 8) and 0xF
+
+  if (kotlin.math.abs(firstFlatSteps - secondFlatSteps) > 2) {
+    return false
+  }
+
+  val firstChangingSteps = (first ushr 12) and 0xF
+  val secondChangingSteps = (second ushr 12) and 0xF
+
+  if (kotlin.math.abs(firstChangingSteps - secondChangingSteps) > 2) {
+    return false
+  }
+
+  val firstTransitionStart = (first ushr 16) and 0xF
+  val secondTransitionStart = (second ushr 16) and 0xF
+
+  if (
+    kotlin.math.abs(firstTransitionStart - secondTransitionStart) > 2
+  ) {
+    return false
+  }
+
+  val firstTransitionEnd = (first ushr 20) and 0xF
+  val secondTransitionEnd = (second ushr 20) and 0xF
+
+  if (
+    kotlin.math.abs(firstTransitionEnd - secondTransitionEnd) > 2
+  ) {
+    return false
+  }
+
+  return true
 }
 
 /**
