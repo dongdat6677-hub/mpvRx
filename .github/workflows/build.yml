@@ -110,6 +110,21 @@ jobs:
           echo "=== MPVLib EVENT OBSERVER ==="
           javap -classpath /tmp/mpvlib-classes.jar -p 'is.xyz.mpv.MPVLib$EventObserver'
 
+      - name: Inspect Standard MPVLib dependencies
+        if: ${{ matrix.distribution.id == 'standard' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ./gradlew :app:dependencies \
+            --configuration standardReleaseCompileClasspath \
+            --no-daemon \
+            --max-workers=2 \
+            | tee /tmp/standard-mpv-dependencies.txt
+
+          echo "=== MPVLIB DEPENDENCIES ==="
+          grep -in -C 5 'mpvlib' /tmp/standard-mpv-dependencies.txt || true
+
       - name: Diagnose available Gradle unit test tasks
         if: ${{ matrix.distribution.id == 'standard' }}
         shell: bash
