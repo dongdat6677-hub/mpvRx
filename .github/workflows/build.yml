@@ -380,28 +380,30 @@ jobs:
           while IFS= read -r artifact; do
             if [[ "$artifact" == *.aar ]]; then
               temp_jar="$(mktemp --suffix=.jar)"
-              unzip -p "$artifact" classes.jar > "$temp_jar" || true
+              unzip -p "$artifact" classes.jar > "$temp_jar" 2>/dev/null || true
 
               if [[ -s "$temp_jar" ]]; then
-                jar tf "$temp_jar" | grep -E \
-                  '^is/xyz/mpv/(MPVLib|MPVNode)(\$EventObserver)?\.class$' \
-                  | while read -r entry; do
+                jar tf "$temp_jar" \
+                  | grep -E '^is/xyz/mpv/(MPVLib|MPVNode)(\$EventObserver)?\.class$' \
+                  | while IFS= read -r entry; do
                       echo "CLASS=$entry"
                       echo "FOUND_IN=$artifact"
-                    done
+                    done || true
               fi
 
               rm -f "$temp_jar"
 
             elif [[ "$artifact" == *.jar ]]; then
-              jar tf "$artifact" | grep -E \
-                '^is/xyz/mpv/(MPVLib|MPVNode)(\$EventObserver)?\.class$' \
-                | while read -r entry; do
+              jar tf "$artifact" \
+                | grep -E '^is/xyz/mpv/(MPVLib|MPVNode)(\$EventObserver)?\.class$' \
+                | while IFS= read -r entry; do
                     echo "CLASS=$entry"
                     echo "FOUND_IN=$artifact"
                   done || true
             fi
           done < <(sed -n 's/^ARTIFACT=//p' /tmp/mpvlib-artifacts.txt)
+
+          echo "=== MPVLIB CLASS SCAN COMPLETED ==="
 
       - name: Build release APKs
         if: ${{ matrix.distribution.package == 'apk' }}
