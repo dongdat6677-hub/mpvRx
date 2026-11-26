@@ -596,6 +596,25 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `detects localized stepped gradient in a narrow three-row region`() {
+    val sample = createRgbSample(48, 32) { x, y ->
+      if (y in 14..16 && x in 12..35) {
+        val value = 40 + ((x - 12) / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(90, 90, 90)
+      }
+    }
+
+    val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+    assertTrue(
+      "Expected localized narrow-region banding to be detected, got $score",
+      score != null && score > 0,
+    )
+  }
+
+  @Test
   fun `rejects narrow three-row smooth gradient`() {
     val sample = createRgbSample(48, 32) { x, y ->
       if (y in 14..16) {
