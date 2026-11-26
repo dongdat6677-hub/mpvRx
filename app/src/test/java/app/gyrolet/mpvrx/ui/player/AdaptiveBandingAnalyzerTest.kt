@@ -170,6 +170,16 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `rejects checkerboard texture noise`() {
+    val sample = createRgbSample(48, 32) { x, y ->
+      val value = if ((x + y) % 2 == 0) 88 else 92
+      Triple(value, value, value)
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
+  @Test
   fun `detects low contrast stepped gradient across parallel rows`() {
     val sample = createRgbSample(32, 32) { x, _ ->
       val value = 80 + (x / 3) * 2
