@@ -192,6 +192,22 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `rejects periodic horizontal stripe texture`() {
+    val sample = createRgbSample(48, 32) { _, y ->
+      val value = when (y % 4) {
+        0 -> 88
+        1 -> 90
+        2 -> 92
+        else -> 90
+      }
+
+      Triple(value, value, value)
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
+  @Test
   fun `detects low contrast stepped gradient across parallel rows`() {
     val sample = createRgbSample(32, 32) { x, _ ->
       val value = 80 + (x / 3) * 2
