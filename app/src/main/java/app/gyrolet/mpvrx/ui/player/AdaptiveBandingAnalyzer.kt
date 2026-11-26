@@ -285,7 +285,8 @@ private fun analyzeGradientChannel(
   var directionChanges = 0
   var firstTransition = -1
   var lastTransition = -1
-
+  var lastOneLevelTransition = -1
+  
   var previous = -1
 
   for (i in 0 until WINDOW_SIZE) {
@@ -320,6 +321,17 @@ private fun analyzeGradientChannel(
     }
 
     if (magnitude > 8) return 0
+
+    if (magnitude == 1) {
+      if (
+        lastOneLevelTransition >= 0 &&
+        i - lastOneLevelTransition < 3
+      ) {
+        return 0
+      }
+
+      lastOneLevelTransition = i
+    }
 
     changingSteps++
 
