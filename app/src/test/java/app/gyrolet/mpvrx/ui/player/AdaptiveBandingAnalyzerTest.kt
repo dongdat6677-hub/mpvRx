@@ -180,6 +180,18 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `rejects deterministic low amplitude random noise`() {
+    val sample = createRgbSample(48, 32) { x, y ->
+      val noise = ((x * 17 + y * 31 + x * y * 7) % 5) - 2
+      val value = 90 + noise
+
+      Triple(value, value, value)
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
+  @Test
   fun `detects low contrast stepped gradient across parallel rows`() {
     val sample = createRgbSample(32, 32) { x, _ ->
       val value = 80 + (x / 3) * 2
