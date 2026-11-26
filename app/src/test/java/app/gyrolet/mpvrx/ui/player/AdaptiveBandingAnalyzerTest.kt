@@ -156,6 +156,20 @@ fun `rejects diagonal low contrast object edge`() {
 }
 
   @Test
+  fun `rejects small localized stepped texture patch`() {
+    val sample = createRgbSample(48, 32) { x, y ->
+      if (y in 15..16 && x in 12..35) {
+        val value = 80 + ((x - 12) / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(90, 90, 90)
+      }
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
+  @Test
   fun `detects low contrast stepped gradient across parallel rows`() {
     val sample = createRgbSample(32, 32) { x, _ ->
       val value = 80 + (x / 3) * 2
