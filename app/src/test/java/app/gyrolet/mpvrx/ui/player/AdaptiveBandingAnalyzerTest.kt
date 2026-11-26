@@ -1065,6 +1065,30 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `scores equivalent horizontal and vertical banding within small orientation margin`() {
+    val horizontalSample = createRgbSample(48, 32) { x, _ ->
+      val value = 40 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val verticalSample = createRgbSample(48, 32) { _, y ->
+      val value = 40 + (y / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val horizontalScore = AdaptiveBandingAnalyzer.analyze(horizontalSample)
+    val verticalScore = AdaptiveBandingAnalyzer.analyze(verticalSample)
+
+    assertTrue(
+      "Expected similar scores for equivalent horizontal and vertical banding: " +
+        "horizontal=$horizontalScore, vertical=$verticalScore",
+      horizontalScore != null &&
+        verticalScore != null &&
+        kotlin.math.abs(horizontalScore - verticalScore) <= 5,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
