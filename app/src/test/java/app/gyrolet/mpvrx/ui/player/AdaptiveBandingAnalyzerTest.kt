@@ -628,6 +628,20 @@ fun `rejects diagonal low contrast object edge`() {
     assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
   }
 
+  @Test
+  fun `rejects one-column vertical stepped texture`() {
+    val sample = createRgbSample(32, 48) { x, y ->
+      if (x == 15) {
+        val value = 40 + (y / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(90, 90, 90)
+      }
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
