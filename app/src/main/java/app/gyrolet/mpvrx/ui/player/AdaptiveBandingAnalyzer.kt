@@ -313,7 +313,7 @@ private fun analyzeGradientChannel(
     val difference = value - previous
     val magnitude = kotlin.math.abs(difference)
 
-    if (magnitude <= 1) {
+    if (magnitude == 0) {
       flatSteps++
       previous = value
       continue
