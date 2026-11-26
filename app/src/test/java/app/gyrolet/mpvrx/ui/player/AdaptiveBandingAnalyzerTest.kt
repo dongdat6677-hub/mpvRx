@@ -102,13 +102,11 @@ class AdaptiveBandingAnalyzerTest {
 
   @Test
   fun `rejects chromatic smooth gradient in dark regions`() {
-    val sample = createRgbSample(32, 16) { x, _ ->
-      val position = minOf(x, 11)
-
+    val sample = createRgbSample(16, 16) { x, _ ->
       Triple(
-        32 - position,
-        64 - position * 2,
-        8 + position * 13,
+        32 - x,
+        64 - 2 * x,
+        8 + 13 * x,
       )
     }
 
