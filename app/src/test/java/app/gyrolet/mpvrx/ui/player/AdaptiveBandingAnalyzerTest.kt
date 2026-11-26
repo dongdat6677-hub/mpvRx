@@ -305,6 +305,18 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `rejects chromatic smooth gradient with nearly constant luminance`() {
+    val sample = createRgbSample(48, 32) { x, _ ->
+      val red = 80 + x * 2
+      val green = 176 - x
+     
+      Triple(red, green, 100)
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
+  @Test
   fun `rejects localized smooth gradient isolated in green channel`() {
     val sample = createRgbSample(48, 32) { x, _ ->
       val green = when {
