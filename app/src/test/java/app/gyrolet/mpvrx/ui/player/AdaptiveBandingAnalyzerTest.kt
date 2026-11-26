@@ -597,8 +597,8 @@ fun `rejects diagonal low contrast object edge`() {
 
   @Test
   fun `detects vertical stepped gradient in a narrow three-column region`() {
-    val sample = createRgbSample(48, 32) { x, y ->
-      if (x in 22..24) {
+    val sample = createRgbSample(32, 48) { x, y ->
+      if (x in 14..16) {
         val value = 40 + (y / 3) * 2
         Triple(value, value, value)
       } else {
