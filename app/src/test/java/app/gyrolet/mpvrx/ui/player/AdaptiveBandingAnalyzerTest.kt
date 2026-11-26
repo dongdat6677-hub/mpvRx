@@ -231,6 +231,26 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `detects localized stepped gradient isolated in green channel`() {
+    val sample = createRgbSample(48, 32) { x, _ ->
+      val green = when {
+        x < 12 -> 80
+        x < 36 -> 80 + ((x - 12) / 3) * 2
+        else -> 96
+      }
+
+      Triple(100, green, 120)
+    }
+
+    val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+    assertTrue(
+      "Expected localized green-channel banding to be detected, got $score",
+      score != null && score > 0,
+    )
+  }
+
+  @Test
   fun `detects localized vertical stepped gradient surrounded by flat regions`() {
     val sample = createRgbSample(32, 48) { _, y ->
       val value = when {
