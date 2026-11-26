@@ -133,7 +133,7 @@ private fun countSpatiallySupported(
 
       if (current == 0) continue
 
-      var hasSimilarNeighbor = false
+      var similarNeighborLines = 0
 
       val firstLine = maxOf(0, line - 1)
       val lastLine = minOf(lineCount - 1, line + 1)
@@ -144,6 +144,8 @@ private fun countSpatiallySupported(
       for (neighborLine in firstLine..lastLine) {
         if (neighborLine == line) continue
 
+        var hasSimilarSignature = false
+
         for (neighborWindow in firstWindow..lastWindow) {
           val neighbor =
             signatures[neighborLine * windowsPerLine + neighborWindow]
@@ -151,15 +153,17 @@ private fun countSpatiallySupported(
           if (neighbor == 0) continue
 
           if (areSignaturesSimilar(current, neighbor)) {
-            hasSimilarNeighbor = true
+            hasSimilarSignature = true
             break
           }
         }
 
-        if (hasSimilarNeighbor) break
+        if (hasSimilarSignature) {
+          similarNeighborLines++
+        }
       }
 
-      if (hasSimilarNeighbor) {
+      if (similarNeighborLines >= 2) {
         supported++
       }
     }
