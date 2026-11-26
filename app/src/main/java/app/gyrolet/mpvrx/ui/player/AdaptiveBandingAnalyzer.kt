@@ -172,6 +172,11 @@ private fun areSignaturesSimilar(
   first: Int,
   second: Int,
 ): Boolean {
+  val firstChannel = (first ushr 24) and 0x3
+  val secondChannel = (second ushr 24) and 0x3
+
+  if (firstChannel != secondChannel) return false
+  
   val firstDirection = first and 0x3
   val secondDirection = second and 0x3
 
@@ -232,6 +237,7 @@ private fun areSignaturesSimilar(
  * 12-15  : changing steps
  * 16-19  : first transition position
  * 20-23  : last transition position
+ * 24-25  : channel ID (0=luma, 1=red, 2=green, 3=blue)
  */
 private fun getBandingSignature(
   sample: ByteArray,
@@ -247,7 +253,7 @@ private fun getBandingSignature(
     )
 
     if (signature != 0) {
-      return signature
+      return signature or (channel shl 24)
     }
   }
 
