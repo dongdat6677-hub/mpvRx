@@ -565,6 +565,17 @@ fun `rejects diagonal low contrast object edge`() {
     assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
   }
 
+  @Test
+  fun `rejects alternating gradient directions across adjacent rows`() {
+    val sample = createRgbSample(48, 32) { x, y ->
+      val position = if (y % 2 == 0) x else 47 - x
+      val value = 40 + (position / 3) * 2
+      Triple(value, value, value)
+    }
+
+    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
