@@ -287,6 +287,24 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
+  fun `detects vertical chromatic banding with nearly constant luminance`() {
+    val sample = createRgbSample(32, 48) { _, y ->
+      val steps = y / 3
+      val red = 80 + steps * 4
+      val green = 176 - steps * 2
+
+      Triple(red, green, 100)
+    }
+
+    val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+    assertTrue(
+      "Expected vertical chromatic banding to be detected despite nearly constant luminance, got $score",
+      score != null && score > 0,
+    )
+  }
+
+  @Test
   fun `rejects localized smooth gradient isolated in green channel`() {
     val sample = createRgbSample(48, 32) { x, _ ->
       val green = when {
