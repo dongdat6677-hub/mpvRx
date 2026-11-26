@@ -1251,6 +1251,62 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `characterizes score range for mixed horizontal and vertical banding`() {
+    val horizontalSample = createRgbSample(96, 64) { x, _ ->
+      val value = 20 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val verticalSample = createRgbSample(96, 64) { _, y ->
+      val value = 20 + (y / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val mixedSample = createRgbSample(96, 64) { x, y ->
+      val value = 20 + (x / 3) * 2 + (y / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val horizontalScore = AdaptiveBandingAnalyzer.analyze(horizontalSample)
+    val verticalScore = AdaptiveBandingAnalyzer.analyze(verticalSample)
+    val mixedScore = AdaptiveBandingAnalyzer.analyze(mixedSample)
+
+    assertTrue(
+      "Expected valid horizontal score: $horizontalScore",
+      horizontalScore != null,
+    )
+
+    assertTrue(
+      "Expected valid vertical score: $verticalScore",
+      verticalScore != null,
+    )
+
+    assertTrue(
+      "Expected valid mixed score: $mixedScore",
+      mixedScore != null,
+    )
+
+    val horizontal = horizontalScore!!
+    val vertical = verticalScore!!
+    val mixed = mixedScore!!
+
+    assertTrue(
+      "Expected mixed banding score to exceed horizontal-only score: horizontal=$horizontal, mixed=$mixed",
+      mixed > horizontal,
+    )
+
+    assertTrue(
+      "Expected mixed banding score to exceed vertical-only score: vertical=$vertical, mixed=$mixed",
+      mixed > vertical,
+    )
+
+    assertTrue(
+      "Expected mixed banding to reach at least HEAVY: mixed=$mixed",
+      mixed >= 60,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
