@@ -1089,6 +1089,30 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `scores equivalent full frame banding similarly across sample resolutions`() {
+    val smallSample = createRgbSample(48, 32) { x, _ ->
+      val value = 40 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val largeSample = createRgbSample(96, 64) { x, _ ->
+      val value = 40 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val smallScore = AdaptiveBandingAnalyzer.analyze(smallSample)
+    val largeScore = AdaptiveBandingAnalyzer.analyze(largeSample)
+
+    assertTrue(
+      "Expected similar scores across sample resolutions: " +
+        "small=$smallScore, large=$largeScore",
+      smallScore != null &&
+        largeScore != null &&
+        kotlin.math.abs(smallScore - largeScore) <= 5,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
