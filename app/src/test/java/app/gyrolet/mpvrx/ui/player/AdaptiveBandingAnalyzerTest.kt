@@ -1037,6 +1037,34 @@ fun `rejects diagonal low contrast object edge`() {
     assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
   }
 
+  @Test
+  fun `scores full width stepped gradient higher than partial width gradient`() {
+    val fullWidthSample = createRgbSample(48, 32) { x, _ ->
+      val value = 40 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val partialWidthSample = createRgbSample(48, 32) { x, _ ->
+      if (x in 0..23) {
+        val value = 40 + (x / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(90, 90, 90)
+      }
+    }
+
+    val fullWidthScore = AdaptiveBandingAnalyzer.analyze(fullWidthSample)
+    val partialWidthScore = AdaptiveBandingAnalyzer.analyze(partialWidthSample)
+
+    assertTrue(
+      "Expected full-width score to exceed partial-width score: " +
+        "full=$fullWidthScore, partial=$partialWidthScore",
+      fullWidthScore != null &&
+        partialWidthScore != null &&
+        fullWidthScore > partialWidthScore,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
