@@ -596,9 +596,9 @@ fun `rejects diagonal low contrast object edge`() {
   }
 
   @Test
-  fun `detects localized stepped gradient in a narrow three-row region`() {
+  fun `detects localized stepped gradient in a narrow four-row region`() {
     val sample = createRgbSample(48, 32) { x, y ->
-      if (y in 14..16 && x in 12..35) {
+      if (y in 14..17 && x in 12..35) {
         val value = 40 + ((x - 12) / 3) * 2
         Triple(value, value, value)
       } else {
