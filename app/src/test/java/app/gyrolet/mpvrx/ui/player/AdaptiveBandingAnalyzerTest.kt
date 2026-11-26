@@ -66,6 +66,21 @@ class AdaptiveBandingAnalyzerTest {
   }
 
   @Test
+  fun `detects low amplitude stepped gradient in dark regions`() {
+    val sample = createRgbSample(32, 16) { x, _ ->
+      val value = 8 + (x / 3)
+      Triple(value, value, value)
+    }
+
+    val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+    assertTrue(
+      "Expected low-amplitude dark-region banding to be detected, got $score",
+      score != null && score > 0,
+    )
+  }
+
+  @Test
   fun `rejects smooth gradient in dark regions`() {
     val sample = createRgbSample(32, 16) { x, _ ->
       val value = 8 + x
