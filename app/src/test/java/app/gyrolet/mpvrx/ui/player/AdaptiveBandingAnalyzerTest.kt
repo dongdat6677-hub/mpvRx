@@ -1113,6 +1113,35 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `scores similar spatial coverage similarly despite different banding amplitudes`() {
+    val lowerAmplitudeSample = createRgbSample(48, 32) { x, _ ->
+      val value = 40 + (x / 3) * 2
+      Triple(value, value, value)
+    }
+
+    val higherAmplitudeSample = createRgbSample(48, 32) { x, _ ->
+      val value = 40 + (x / 3) * 3
+      Triple(value, value, value)
+    }
+
+    val lowerAmplitudeScore =
+      AdaptiveBandingAnalyzer.analyze(lowerAmplitudeSample)
+
+    val higherAmplitudeScore =
+      AdaptiveBandingAnalyzer.analyze(higherAmplitudeSample)
+
+    assertTrue(
+      "Expected similar scores despite different banding amplitudes: " +
+        "lower=$lowerAmplitudeScore, higher=$higherAmplitudeScore",
+      lowerAmplitudeScore != null &&
+        higherAmplitudeScore != null &&
+        kotlin.math.abs(
+          lowerAmplitudeScore - higherAmplitudeScore
+        ) <= 5,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
