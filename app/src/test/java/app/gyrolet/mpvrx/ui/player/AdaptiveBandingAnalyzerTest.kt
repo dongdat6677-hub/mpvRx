@@ -595,6 +595,25 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `detects vertical stepped gradient in a narrow three-column region`() {
+    val sample = createRgbSample(48, 32) { x, y ->
+      if (x in 22..24) {
+        val value = 40 + (y / 3) * 2
+        Triple(value, value, value)
+      } else {
+        Triple(90, 90, 90)
+      }
+    }
+
+    val score = AdaptiveBandingAnalyzer.analyze(sample)
+
+    assertTrue(
+      "Expected narrow vertical banding to be detected, got $score",
+      score != null && score > 0,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
