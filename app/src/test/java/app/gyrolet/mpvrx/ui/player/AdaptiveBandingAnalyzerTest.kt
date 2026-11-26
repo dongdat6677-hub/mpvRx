@@ -1142,6 +1142,38 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `scores increase with greater horizontal banding coverage`() {
+    val coverages = listOf(24, 48, 72, 96)
+
+    val scores = coverages.map { coverage ->
+      val sample = createRgbSample(96, 64) { x, _ ->
+        if (x < coverage) {
+          val value = 40 + (x / 3) * 2
+          Triple(value, value, value)
+        } else {
+          Triple(90, 90, 90)
+        }
+      }
+
+      AdaptiveBandingAnalyzer.analyze(sample)
+    }
+
+    assertTrue(
+      "Expected valid scores for all coverage levels: $scores",
+      scores.all { it != null },
+    )
+
+    val validScores = scores.filterNotNull()
+
+    assertTrue(
+      "Expected scores to increase or remain equal as coverage grows: $validScores",
+      validScores.zipWithNext().all { (previous, next) ->
+        next >= previous
+      },
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
