@@ -1209,6 +1209,48 @@ fun `rejects diagonal low contrast object edge`() {
     )
   }
 
+  @Test
+  fun `characterizes score range for vertical only banding coverage`() {
+    val coverages = listOf(16, 32, 48, 64)
+
+    val scores = coverages.map { coverage ->
+      val sample = createRgbSample(96, 64) { _, y ->
+        if (y < coverage) {
+          val value = 40 + (y / 3) * 2
+          Triple(value, value, value)
+        } else {
+          Triple(90, 90, 90)
+        }
+      }
+
+      AdaptiveBandingAnalyzer.analyze(sample)
+    }
+
+    assertTrue(
+      "Expected valid scores: $scores",
+      scores.all { it != null },
+    )
+
+    val validScores = scores.filterNotNull()
+
+    assertTrue(
+      "Expected scores to increase or remain equal as vertical coverage grows: $validScores",
+      validScores.zipWithNext().all { (previous, next) ->
+        next >= previous
+      },
+    )
+
+    assertTrue(
+      "Expected full-height vertical-only banding score below HEAVY threshold: $validScores",
+      validScores.last() < 60,
+    )
+
+    assertTrue(
+      "Expected full-height vertical-only banding to reach at least MEDIUM: $validScores",
+      validScores.last() >= 35,
+    )
+  }
+
   private fun createRgbSample(
     width: Int,
     height: Int,
