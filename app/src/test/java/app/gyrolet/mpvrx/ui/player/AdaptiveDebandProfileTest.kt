@@ -70,4 +70,32 @@ class AdaptiveDebandProfileTest {
     assertTrue(heavy.threshold > light.threshold)
     assertTrue(veryHeavy.threshold > heavy.threshold)
   }
+  
+  @Test
+  fun `uses optimized deband parameters for each profile`() {
+    assertEquals(
+      AdaptiveDebandProfile(false, 1, 48, 16, 32),
+      AdaptiveDebandProfiles.NONE,
+    )
+
+    assertEquals(
+      AdaptiveDebandProfile(true, 1, 32, 16, 16),
+      AdaptiveDebandProfiles.LIGHT,
+    )
+
+    assertEquals(
+      AdaptiveDebandProfile(true, 1, 48, 16, 24),
+      AdaptiveDebandProfiles.MEDIUM,
+    )
+
+    assertEquals(
+      AdaptiveDebandProfile(true, 2, 64, 12, 32),
+      AdaptiveDebandProfiles.HEAVY,
+    )
+
+    assertEquals(
+      AdaptiveDebandProfile(true, 3, 80, 8, 40),
+      AdaptiveDebandProfiles.VERY_HEAVY,
+    )
+  }
 }
