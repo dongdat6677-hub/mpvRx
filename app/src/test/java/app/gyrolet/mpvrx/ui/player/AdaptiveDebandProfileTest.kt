@@ -98,4 +98,27 @@ class AdaptiveDebandProfileTest {
       AdaptiveDebandProfiles.VERY_HEAVY,
     )
   }
+  
+  @Test
+  fun `selects correct profile at every score threshold`() {
+    // NONE: score 0–14
+    assertEquals(AdaptiveDebandProfiles.NONE, AdaptiveDebandProfiles.fromScore(0))
+    assertEquals(AdaptiveDebandProfiles.NONE, AdaptiveDebandProfiles.fromScore(14))
+
+    // LIGHT: score 15–34
+    assertEquals(AdaptiveDebandProfiles.LIGHT, AdaptiveDebandProfiles.fromScore(15))
+    assertEquals(AdaptiveDebandProfiles.LIGHT, AdaptiveDebandProfiles.fromScore(34))
+
+    // MEDIUM: score 35–59
+    assertEquals(AdaptiveDebandProfiles.MEDIUM, AdaptiveDebandProfiles.fromScore(35))
+    assertEquals(AdaptiveDebandProfiles.MEDIUM, AdaptiveDebandProfiles.fromScore(59))
+
+    // HEAVY: score 60–79
+    assertEquals(AdaptiveDebandProfiles.HEAVY, AdaptiveDebandProfiles.fromScore(60))
+    assertEquals(AdaptiveDebandProfiles.HEAVY, AdaptiveDebandProfiles.fromScore(79))
+
+    // VERY_HEAVY: score 80–100
+    assertEquals(AdaptiveDebandProfiles.VERY_HEAVY, AdaptiveDebandProfiles.fromScore(80))
+    assertEquals(AdaptiveDebandProfiles.VERY_HEAVY, AdaptiveDebandProfiles.fromScore(100))
+  }
 }
