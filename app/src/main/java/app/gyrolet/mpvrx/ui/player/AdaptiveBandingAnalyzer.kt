@@ -163,7 +163,7 @@ private fun countSpatiallySupported(
         }
       }
 
-      if (similarNeighborLines >= 2) {
+      if (similarNeighborLines >= 1) {
         supported++
       }
     }
@@ -189,21 +189,21 @@ private fun areSignaturesSimilar(
   val firstAmplitude = (first ushr 2) and 0x3F
   val secondAmplitude = (second ushr 2) and 0x3F
 
-  if (kotlin.math.abs(firstAmplitude - secondAmplitude) > 6) {
+  if (kotlin.math.abs(firstAmplitude - secondAmplitude) > 8) {
     return false
   }
 
   val firstFlatSteps = (first ushr 8) and 0xF
   val secondFlatSteps = (second ushr 8) and 0xF
 
-  if (kotlin.math.abs(firstFlatSteps - secondFlatSteps) > 2) {
+  if (kotlin.math.abs(firstFlatSteps - secondFlatSteps) > 3) {
     return false
   }
 
   val firstChangingSteps = (first ushr 12) and 0xF
   val secondChangingSteps = (second ushr 12) and 0xF
 
-  if (kotlin.math.abs(firstChangingSteps - secondChangingSteps) > 2) {
+  if (kotlin.math.abs(firstChangingSteps - secondChangingSteps) > 3) {
     return false
   }
 
@@ -211,7 +211,7 @@ private fun areSignaturesSimilar(
   val secondTransitionStart = (second ushr 16) and 0xF
 
   if (
-    kotlin.math.abs(firstTransitionStart - secondTransitionStart) > 0
+    kotlin.math.abs(firstTransitionStart - secondTransitionStart) > 1
   ) {
     return false
   }
@@ -220,7 +220,7 @@ private fun areSignaturesSimilar(
   val secondTransitionEnd = (second ushr 20) and 0xF
 
   if (
-    kotlin.math.abs(firstTransitionEnd - secondTransitionEnd) > 0
+    kotlin.math.abs(firstTransitionEnd - secondTransitionEnd) > 1
   ) {
     return false
   }
