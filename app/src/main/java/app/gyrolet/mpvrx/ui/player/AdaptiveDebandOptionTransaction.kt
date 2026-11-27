@@ -9,8 +9,10 @@ internal enum class AdaptiveDebandTransactionResult {
 }
 
 /**
- * Applies a group of mpv options and restores their previous values
- * if any write or readback verification fails.
+ * Applies a group of mpv options atomically as far as possible.
+ *
+ * If any write or readback verification fails, the previous values
+ * are restored and verified before returning.
  */
 internal object AdaptiveDebandOptionTransaction {
 
