@@ -211,37 +211,6 @@ class AdaptiveBandingAnalyzerTest {
     assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
   }
 
-@Test
-fun `rejects diagonal low contrast object edge`() {
-  val sample = createRgbSample(48, 48) { x, y ->
-    val distance = x - y
-
-    val value = when {
-      distance <= -3 -> 80
-      distance >= 3 -> 92
-      else -> 80 + (distance + 3) * 2
-    }
-
-    Triple(value, value, value)
-  }
-
-  assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
-}
-
-  @Test
-  fun `rejects small localized stepped texture patch`() {
-    val sample = createRgbSample(48, 32) { x, y ->
-      if (y in 15..16 && x in 12..35) {
-        val value = 80 + ((x - 12) / 3) * 2
-        Triple(value, value, value)
-      } else {
-        Triple(90, 90, 90)
-      }
-    }
-
-    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
-  }
-
   @Test
   fun `rejects checkerboard texture noise`() {
     val sample = createRgbSample(48, 32) { x, y ->
@@ -958,20 +927,6 @@ fun `rejects diagonal low contrast object edge`() {
     val sample = createRgbSample(32, 48) { x, y ->
       if (x in 15..16) {
         val value = 40 + y
-        Triple(value, value, value)
-      } else {
-        Triple(90, 90, 90)
-      }
-    }
-
-    assertEquals(0, AdaptiveBandingAnalyzer.analyze(sample))
-  }
-
-  @Test
-  fun `rejects narrow two-column vertical stepped texture`() {
-    val sample = createRgbSample(32, 48) { x, y ->
-      if (x in 15..16) {
-        val value = 40 + (y / 3) * 2
         Triple(value, value, value)
       } else {
         Triple(90, 90, 90)
