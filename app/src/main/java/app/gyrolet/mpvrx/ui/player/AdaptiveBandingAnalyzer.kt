@@ -18,6 +18,7 @@ internal object AdaptiveBandingAnalyzer {
   private const val MAX_DIMENSION = 256
   private const val WINDOW_SIZE = 12
   private const val WINDOW_STRIDE = 4
+  private const val CHANNEL_COUNT = 4
 
   private const val RED_OFFSET = 0
   private const val GREEN_OFFSET = 1
@@ -51,7 +52,7 @@ internal object AdaptiveBandingAnalyzer {
       ((width - WINDOW_SIZE) / WINDOW_STRIDE) + 1
 
     val horizontalSignatures =
-      IntArray(height * horizontalWindows)
+      IntArray(height * horizontalWindows * CHANNEL_COUNT)
 
     var horizontalTotal = 0
 
@@ -65,8 +66,14 @@ internal object AdaptiveBandingAnalyzer {
 
         val start = rowStart + x * 3
 
-        horizontalSignatures[y * horizontalWindows + windowIndex] =
-          getBandingSignature(sample, start, 3)
+        val signatures = getBandingSignatures(sample, start, 3)
+        val signatureIndex =
+          (y * horizontalWindows + windowIndex) * CHANNEL_COUNT
+
+        for (channel in 0 until CHANNEL_COUNT) {
+          horizontalSignatures[signatureIndex + channel] =
+            signatures[channel]
+        }
 
         x += WINDOW_STRIDE
         windowIndex++
@@ -78,7 +85,7 @@ internal object AdaptiveBandingAnalyzer {
       ((height - WINDOW_SIZE) / WINDOW_STRIDE) + 1
 
     val verticalSignatures =
-      IntArray(width * verticalWindows)
+  IntArray(width * verticalWindows * CHANNEL_COUNT)
 
     var verticalTotal = 0
 
@@ -91,8 +98,14 @@ internal object AdaptiveBandingAnalyzer {
 
         val start = HEADER_SIZE + (y * width + x) * 3
 
-        verticalSignatures[x * verticalWindows + windowIndex] =
-          getBandingSignature(sample, start, width * 3)
+        val signatures = getBandingSignatures(sample, start, width * 3)
+        val signatureIndex =
+          (x * verticalWindows + windowIndex) * CHANNEL_COUNT
+
+        for (channel in 0 until CHANNEL_COUNT) {
+          verticalSignatures[signatureIndex + channel] =
+          signatures[channel]
+        }
 
         y += WINDOW_STRIDE
         windowIndex++
@@ -129,41 +142,56 @@ private fun countSpatiallySupported(
 
   for (line in 0 until lineCount) {
     for (window in 0 until windowsPerLine) {
-      val current = signatures[line * windowsPerLine + window]
+      val signatureIndex =
+        (line * windowsPerLine + window) * CHANNEL_COUNT
 
-      if (current == 0) continue
+      var windowSupported = false
 
-      var similarNeighborLines = 0
+      for (channel in 0 until CHANNEL_COUNT) {
+        val current = signatures[signatureIndex + channel]
 
-      val firstLine = maxOf(0, line - 1)
-      val lastLine = minOf(lineCount - 1, line + 1)
+        if (current == 0) continue
 
-      val firstWindow = maxOf(0, window - 1)
-      val lastWindow = minOf(windowsPerLine - 1, window + 1)
+        var similarNeighborLines = 0
 
-      for (neighborLine in firstLine..lastLine) {
-        if (neighborLine == line) continue
+        val firstLine = maxOf(0, line - 1)
+        val lastLine = minOf(lineCount - 1, line + 1)
 
-        var hasSimilarSignature = false
+        val firstWindow = maxOf(0, window - 1)
+        val lastWindow = minOf(windowsPerLine - 1, window + 1)
 
-        for (neighborWindow in firstWindow..lastWindow) {
-          val neighbor =
-            signatures[neighborLine * windowsPerLine + neighborWindow]
+        for (neighborLine in firstLine..lastLine) {
+          if (neighborLine == line) continue
 
-          if (neighbor == 0) continue
+          var hasSimilarSignature = false
 
-          if (areSignaturesSimilar(current, neighbor)) {
-            hasSimilarSignature = true
-            break
+          for (neighborWindow in firstWindow..lastWindow) {
+            val neighborIndex =
+              (neighborLine * windowsPerLine + neighborWindow) *
+                CHANNEL_COUNT + channel
+
+            val neighbor = signatures[neighborIndex]
+
+            if (neighbor == 0) continue
+
+            if (areSignaturesSimilar(current, neighbor)) {
+              hasSimilarSignature = true
+              break
+            }
+          }
+
+          if (hasSimilarSignature) {
+            similarNeighborLines++
           }
         }
 
-        if (hasSimilarSignature) {
-          similarNeighborLines++
+        if (similarNeighborLines >= 1) {
+          windowSupported = true
+          break
         }
       }
 
-      if (similarNeighborLines >= 1) {
+      if (windowSupported) {
         supported++
       }
     }
@@ -243,12 +271,14 @@ private fun areSignaturesSimilar(
  * 20-23  : last transition position
  * 24-25  : channel ID (0=luma, 1=red, 2=green, 3=blue)
  */
-private fun getBandingSignature(
+private fun getBandingSignatures(
   sample: ByteArray,
   start: Int,
   stride: Int,
-): Int {
-  for (channel in 0..3) {
+): IntArray {
+  val signatures = IntArray(CHANNEL_COUNT)
+
+  for (channel in 0 until CHANNEL_COUNT) {
     val signature = analyzeGradientChannel(
       sample,
       start,
@@ -257,11 +287,11 @@ private fun getBandingSignature(
     )
 
     if (signature != 0) {
-      return signature or (channel shl 24)
+      signatures[channel] = signature or (channel shl 24)
     }
   }
 
-  return 0
+  return signatures
 }
 
 /**
