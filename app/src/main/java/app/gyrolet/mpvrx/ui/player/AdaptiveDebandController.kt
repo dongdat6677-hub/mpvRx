@@ -26,13 +26,20 @@ class AdaptiveDebandController(
   private var pendingLevel: BandingLevel? = null
   private var pendingCount = 0
 
+  fun observe(score: Int): AdaptiveDebandProfile? =
+    observe(score) { true }
+
   /**
-   * Submit a new banding score.
+   * Submit a score and apply a confirmed profile before committing
+   * the controller's current level.
    *
-   * Returns a profile only when a confirmed level transition occurs.
-   * Returns null when the current profile should remain unchanged.
+   * A failed application keeps the pending transition so that the
+   * next sample can retry without losing the confirmed target.
    */
-  fun observe(score: Int): AdaptiveDebandProfile? {
+  fun observe(
+    score: Int,
+    applyProfile: (AdaptiveDebandProfile) -> Boolean,
+  ): AdaptiveDebandProfile? {
     val targetLevel = classifyWithHysteresis(score)
 
     if (targetLevel == currentLevel) {
@@ -51,10 +58,16 @@ class AdaptiveDebandController(
       return null
     }
 
+    val profile = AdaptiveDebandProfiles.forLevel(targetLevel)
+
+    if (!applyProfile(profile)) {
+      return null
+    }
+
     currentLevel = targetLevel
     clearPending()
 
-    return AdaptiveDebandProfiles.forLevel(currentLevel)
+    return profile
   }
 
   /**
