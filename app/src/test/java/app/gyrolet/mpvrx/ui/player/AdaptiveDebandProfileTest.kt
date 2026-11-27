@@ -155,4 +155,22 @@ class AdaptiveDebandProfileTest {
     assertTrue(medium.range > heavy.range)
     assertTrue(heavy.range > veryHeavy.range)
   }
+  
+  @Test
+  fun `keeps all deband profile parameters within mpv supported bounds`() {
+    val profiles = listOf(
+      AdaptiveDebandProfiles.NONE,
+      AdaptiveDebandProfiles.LIGHT,
+      AdaptiveDebandProfiles.MEDIUM,
+      AdaptiveDebandProfiles.HEAVY,
+      AdaptiveDebandProfiles.VERY_HEAVY,
+    )
+
+    profiles.forEach { profile ->
+      assertTrue(profile.iterations in 0..16)
+      assertTrue(profile.threshold in 0..4096)
+      assertTrue(profile.range in 1..64)
+      assertTrue(profile.grain in 0..4096)
+    }
+  }
 }
