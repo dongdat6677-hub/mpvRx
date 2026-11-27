@@ -274,5 +274,38 @@ class AdaptiveDebandControllerTest {
 
     assertEquals(BandingLevel.MEDIUM, controller.currentLevel)
   }
+  
+  @Test
+  fun `prevents downward profile oscillation around hysteresis boundary`() {
+    val controller = AdaptiveDebandController()
+
+    // Confirm transition to HEAVY.
+    repeat(3) {
+      controller.observe(70)
+    }
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+
+    // Alternate around the downward threshold of 55.
+    // Score 54 targets MEDIUM; score 57 returns to HEAVY.
+    repeat(5) {
+      assertNull(controller.observe(54))
+      assertNull(controller.observe(57))
+    }
+
+    // No transition should occur because MEDIUM never gets
+    // three consecutive confirmation samples.
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+
+    // Three consecutive scores below the threshold must confirm MEDIUM.
+    assertNull(controller.observe(54))
+    assertNull(controller.observe(54))
+
+    val mediumProfile = controller.observe(54)
+
+    assertEquals(BandingLevel.MEDIUM, controller.currentLevel)
+    assertTrue(mediumProfile!!.enabled)
+    assertEquals(1, mediumProfile.iterations)
+  }
 }
 
