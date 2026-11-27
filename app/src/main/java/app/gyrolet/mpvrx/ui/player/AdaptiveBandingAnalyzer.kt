@@ -66,14 +66,16 @@ internal object AdaptiveBandingAnalyzer {
 
         val start = rowStart + x * 3
 
-        val signatures = getBandingSignatures(sample, start, 3)
         val signatureIndex =
           (y * horizontalWindows + windowIndex) * CHANNEL_COUNT
 
-        for (channel in 0 until CHANNEL_COUNT) {
-          horizontalSignatures[signatureIndex + channel] =
-            signatures[channel]
-        }
+        writeBandingSignatures(
+          sample,
+          start,
+          3,
+          horizontalSignatures,
+          signatureIndex,
+        )
 
         x += WINDOW_STRIDE
         windowIndex++
@@ -98,14 +100,16 @@ internal object AdaptiveBandingAnalyzer {
 
         val start = HEADER_SIZE + (y * width + x) * 3
 
-        val signatures = getBandingSignatures(sample, start, width * 3)
         val signatureIndex =
           (x * verticalWindows + windowIndex) * CHANNEL_COUNT
 
-        for (channel in 0 until CHANNEL_COUNT) {
-          verticalSignatures[signatureIndex + channel] =
-          signatures[channel]
-        }
+        writeBandingSignatures(
+          sample,
+          start,
+          width * 3,
+          verticalSignatures,
+          signatureIndex,
+        )
 
         y += WINDOW_STRIDE
         windowIndex++
@@ -271,13 +275,13 @@ private fun areSignaturesSimilar(
  * 20-23  : last transition position
  * 24-25  : channel ID (0=luma, 1=red, 2=green, 3=blue)
  */
-private fun getBandingSignatures(
+private fun writeBandingSignatures(
   sample: ByteArray,
   start: Int,
   stride: Int,
-): IntArray {
-  val signatures = IntArray(CHANNEL_COUNT)
-
+  destination: IntArray,
+  destinationIndex: Int,
+) {
   for (channel in 0 until CHANNEL_COUNT) {
     val signature = analyzeGradientChannel(
       sample,
@@ -286,12 +290,13 @@ private fun getBandingSignatures(
       channel,
     )
 
-    if (signature != 0) {
-      signatures[channel] = signature or (channel shl 24)
-    }
+    destination[destinationIndex + channel] =
+      if (signature != 0) {
+        signature or (channel shl 24)
+      } else {
+        0
+      }
   }
-
-  return signatures
 }
 
 /**
