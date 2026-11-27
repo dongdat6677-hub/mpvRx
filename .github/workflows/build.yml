@@ -76,7 +76,7 @@ jobs:
           set -euo pipefail
           mkdir -p app/libs
           curl -fL \
-            "https://github.com/dongdat6677-hub/mpvlibAndroid/releases/download/v2-autodeband-no-p3/mpvlib.aar" \
+            "https://github.com/dongdat6677-hub/mpvlibAndroid/releases/download/v3-autodeband-cached-scaler/mpvlib.aar" \
             -o app/libs/mpvlib-patched.aar
           test -s app/libs/mpvlib-patched.aar
           
