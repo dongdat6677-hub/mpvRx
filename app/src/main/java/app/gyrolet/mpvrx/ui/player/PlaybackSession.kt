@@ -1594,109 +1594,75 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
     }
   }
   
-  internal fun applyAdaptiveDebandProfile(
-    profile: AdaptiveDebandProfile,
-  ): Boolean = withReadyCore(false) {
-    val optionNames = listOf(
-      "deband",
-      "deband-iterations",
-      "deband-threshold",
-      "deband-range",
-      "deband-grain",
-    )
+internal fun applyAdaptiveDebandProfile(
+  profile: AdaptiveDebandProfile,
+): Boolean = withReadyCore(false) {
+  val optionNames = listOf(
+    "deband",
+    "deband-iterations",
+    "deband-threshold",
+    "deband-range",
+    "deband-grain",
+  )
 
-    if (optionNames.any(MpvConfigOverridePolicy::isOwnedByMpvConf)) {
-      return@withReadyCore false
-    }
-
-    val previousValues = runCatching {
-      mapOf(
-        "deband" to (MPVLib.getPropertyBoolean("deband")
-          ?: error("Unable to read deband")),
-        "deband-iterations" to (MPVLib.getPropertyInt("deband-iterations")
-          ?: error("Unable to read deband-iterations")),
-        "deband-threshold" to (MPVLib.getPropertyInt("deband-threshold")
-          ?: error("Unable to read deband-threshold")),
-        "deband-range" to (MPVLib.getPropertyInt("deband-range")
-          ?: error("Unable to read deband-range")),
-        "deband-grain" to (MPVLib.getPropertyInt("deband-grain")
-          ?: error("Unable to read deband-grain")),
-      )
-    }.onFailure { error ->
-      Log.e(TAG, "Unable to snapshot current Deband options", error)
-    }.getOrNull() ?: return@withReadyCore false
-
-    val updates = listOf(
-      "deband" to if (profile.enabled) "yes" else "no",
-      "deband-iterations" to profile.iterations.toString(),
-      "deband-threshold" to profile.threshold.toString(),
-      "deband-range" to profile.range.toString(),
-      "deband-grain" to profile.grain.toString(),
-    )
-
-    fun verifyValues(values: Map<String, Any>): Boolean {
-      return MPVLib.getPropertyBoolean("deband") == values["deband"] &&
-        MPVLib.getPropertyInt("deband-iterations") == values["deband-iterations"] &&
-        MPVLib.getPropertyInt("deband-threshold") == values["deband-threshold"] &&
-        MPVLib.getPropertyInt("deband-range") == values["deband-range"] &&
-        MPVLib.getPropertyInt("deband-grain") == values["deband-grain"]
-    }
-
-    val targetValues = mapOf(
-      "deband" to profile.enabled,
-      "deband-iterations" to profile.iterations,
-      "deband-threshold" to profile.threshold,
-      "deband-range" to profile.range,
-      "deband-grain" to profile.grain,
-    )
-
-    val applied = runCatching {
-      updates.forEach { (name, value) ->
-        check(setOptionString(name, value) >= 0) {
-          "Failed to write mpv option: $name=$value"
-        }
-      }
-
-      check(verifyValues(targetValues)) {
-        "Deband profile readback verification failed"
-      }
-
-      true
-    }.onFailure { error ->
-      Log.e(TAG, "Adaptive Deband profile application failed: $profile", error)
-    }.getOrDefault(false)
-
-    if (applied) {
-      return@withReadyCore true
-    }
-
-    val rollback = runCatching {
-      previousValues.forEach { (name, value) ->
-        val optionValue = when (value) {
-          is Boolean -> if (value) "yes" else "no"
-          else -> value.toString()
-        }
-
-        check(setOptionString(name, optionValue) >= 0) {
-          "Failed to restore mpv option: $name=$optionValue"
-        }
-      }
-
-      check(verifyValues(previousValues)) {
-        "Deband rollback verification failed"
-      }
-
-      true
-    }.onFailure { error ->
-      Log.e(TAG, "Adaptive Deband rollback FAILED", error)
-    }.getOrDefault(false)
-
-    if (rollback) {
-      Log.w(TAG, "Adaptive Deband previous profile restored")
-    }
-
-    false
+  if (optionNames.any(MpvConfigOverridePolicy::isOwnedByMpvConf)) {
+    return@withReadyCore false
   }
+
+  val updates = listOf(
+    "deband" to if (profile.enabled) "yes" else "no",
+    "deband-iterations" to profile.iterations.toString(),
+    "deband-threshold" to profile.threshold.toString(),
+    "deband-range" to profile.range.toString(),
+    "deband-grain" to profile.grain.toString(),
+  )
+
+  fun readOption(name: String): String? {
+    return when (name) {
+      "deband" -> MPVLib.getPropertyBoolean(name)?.let {
+        if (it) "yes" else "no"
+      }
+
+      else -> MPVLib.getPropertyInt(name)?.toString()
+    }
+  }
+
+  val result = AdaptiveDebandOptionTransaction.apply(
+    updates = updates,
+    readOption = ::readOption,
+    writeOption = { name, value ->
+      setOptionString(name, value) >= 0
+    },
+  )
+
+  when (result) {
+    AdaptiveDebandTransactionResult.APPLIED -> true
+
+    AdaptiveDebandTransactionResult.ROLLED_BACK -> {
+      Log.e(
+        TAG,
+        "Adaptive Deband application failed; previous options restored: $profile",
+      )
+      false
+    }
+
+    AdaptiveDebandTransactionResult.ROLLBACK_FAILED -> {
+      Log.e(
+        TAG,
+        "Adaptive Deband application and rollback both failed: $profile",
+      )
+      false
+    }
+
+    AdaptiveDebandTransactionResult.SNAPSHOT_FAILED -> {
+      Log.e(
+        TAG,
+        "Adaptive Deband could not snapshot current options: $profile",
+      )
+      false
+    }
+  }
+}
 
 /**
  * Captures a compact frame sample for adaptive debanding analysis.
