@@ -1698,41 +1698,44 @@ internal fun observeAdaptiveBandingScore(
         return@withLock false
     }
 
-val previousLevel = adaptiveDebandController.currentLevel
-val profile = adaptiveDebandController.observe(score)
+    val previousLevel = adaptiveDebandController.currentLevel
 
-if (profile == null) {
-    return@withLock true
-}
+    val profile = adaptiveDebandController.observe(score) { candidate ->
+        val applied = applyAdaptiveDebandProfile(candidate)
 
-val newLevel = adaptiveDebandController.currentLevel
+        if (!applied) {
+            Log.e(
+                TAG,
+                "Adaptive Deband profile application FAILED: " +
+                    "target=${candidate}, score=$score"
+            )
+        }
 
-Log.i(
-    TAG,
-    "Adaptive Deband level transition: " +
-        "score=$score, from=$previousLevel, to=$newLevel, " +
-        "enabled=${profile.enabled}, " +
-        "iterations=${profile.iterations}, " +
-        "threshold=${profile.threshold}, " +
-        "range=${profile.range}, grain=${profile.grain}"
-)
+        applied
+    }
 
-val applied = applyAdaptiveDebandProfile(profile)
+    if (profile == null) {
+        return@withLock true
+    }
 
-if (applied) {
+    val newLevel = adaptiveDebandController.currentLevel
+
+    Log.i(
+        TAG,
+        "Adaptive Deband level transition: " +
+            "score=$score, from=$previousLevel, to=$newLevel, " +
+            "enabled=${profile.enabled}, " +
+            "iterations=${profile.iterations}, " +
+            "threshold=${profile.threshold}, " +
+            "range=${profile.range}, grain=${profile.grain}"
+    )
+
     Log.i(
         TAG,
         "Adaptive Deband profile applied successfully: level=$newLevel"
     )
-} else {
-    Log.e(
-        TAG,
-        "Adaptive Deband profile application FAILED: level=$newLevel"
-    )
-}
 
-applied
-  }
+    true
 
   fun observeProperty(
     property: String,
