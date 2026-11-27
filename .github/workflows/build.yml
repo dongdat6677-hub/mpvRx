@@ -28,6 +28,7 @@ jobs:
             gradle: Standard
             dir: standard
             abis: arm64-v8a
+            targetAbi: arm64-v8a
             package: apk
           - id: fongmi
             name: FongMi
