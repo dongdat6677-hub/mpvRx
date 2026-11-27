@@ -307,5 +307,69 @@ class AdaptiveDebandControllerTest {
     assertTrue(mediumProfile!!.enabled)
     assertEquals(1, mediumProfile.iterations)
   }
+  
+  @Test
+  fun `retries confirmed transition when profile application fails`() {
+    val controller = AdaptiveDebandController()
+    var applicationAttempts = 0
+
+    repeat(2) {
+      assertNull(
+        controller.observe(70) {
+          applicationAttempts++
+          true
+        }
+      )
+    }
+
+    // The third sample confirms HEAVY, but application fails.
+    assertNull(
+      controller.observe(70) {
+        applicationAttempts++
+        false
+      }
+    )
+
+    assertEquals(1, applicationAttempts)
+    assertEquals(BandingLevel.NONE, controller.currentLevel)
+
+    // The next sample must retry the same confirmed transition.
+    val profile = controller.observe(70) {
+      applicationAttempts++
+      true
+    }
+
+    assertEquals(2, applicationAttempts)
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+    assertEquals(AdaptiveDebandProfiles.HEAVY, profile)
+  }
+
+  @Test
+  fun `does not reapply profile after successful callback`() {
+    val controller = AdaptiveDebandController()
+    var applicationAttempts = 0
+
+    repeat(3) {
+      controller.observe(70) {
+        applicationAttempts++
+        true
+      }
+    }
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+    assertEquals(1, applicationAttempts)
+
+    repeat(10) {
+      assertNull(
+        controller.observe(70) {
+          applicationAttempts++
+          true
+        }
+      )
+    }
+
+    assertEquals(1, applicationAttempts)
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+  }
 }
 
