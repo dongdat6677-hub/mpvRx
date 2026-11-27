@@ -20,6 +20,29 @@ class AdaptiveDebandProfileTest {
   }
 
   @Test
+  fun `classifies scores immediately below at and above every threshold`() {
+    // LIGHT threshold: 15
+    assertEquals(BandingLevel.NONE, BandingLevel.fromScore(14))
+    assertEquals(BandingLevel.LIGHT, BandingLevel.fromScore(15))
+    assertEquals(BandingLevel.LIGHT, BandingLevel.fromScore(16))
+
+    // MEDIUM threshold: 35
+    assertEquals(BandingLevel.LIGHT, BandingLevel.fromScore(34))
+    assertEquals(BandingLevel.MEDIUM, BandingLevel.fromScore(35))
+    assertEquals(BandingLevel.MEDIUM, BandingLevel.fromScore(36))
+
+    // HEAVY threshold: 60
+    assertEquals(BandingLevel.MEDIUM, BandingLevel.fromScore(59))
+    assertEquals(BandingLevel.HEAVY, BandingLevel.fromScore(60))
+    assertEquals(BandingLevel.HEAVY, BandingLevel.fromScore(61))
+
+    // VERY_HEAVY threshold: 80
+    assertEquals(BandingLevel.HEAVY, BandingLevel.fromScore(79))
+    assertEquals(BandingLevel.VERY_HEAVY, BandingLevel.fromScore(80))
+    assertEquals(BandingLevel.VERY_HEAVY, BandingLevel.fromScore(81))
+  }
+
+  @Test
   fun `clamps scores outside valid range`() {
     assertEquals(BandingLevel.NONE, BandingLevel.fromScore(-10))
     assertEquals(BandingLevel.VERY_HEAVY, BandingLevel.fromScore(120))
