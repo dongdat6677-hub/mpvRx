@@ -1623,9 +1623,37 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
       "deband-grain" to profile.grain.toString(),
     )
 
-    updates.all { (name, value) ->
-      setOptionString(name, value) >= 0
-    }
+    runCatching {
+      updates.forEach { (name, value) ->
+        check(setOptionString(name, value) >= 0) {
+          "Failed to write mpv option: $name=$value"
+        }
+      }
+
+      check(MPVLib.getPropertyBoolean("deband") == profile.enabled) {
+        "Deband enable state readback mismatch"
+      }
+      check(MPVLib.getPropertyInt("deband-iterations") == profile.iterations) {
+        "Deband iterations readback mismatch"
+      }
+      check(MPVLib.getPropertyInt("deband-threshold") == profile.threshold) {
+        "Deband threshold readback mismatch"
+      }
+      check(MPVLib.getPropertyInt("deband-range") == profile.range) {
+        "Deband range readback mismatch"
+      }
+      check(MPVLib.getPropertyInt("deband-grain") == profile.grain) {
+        "Deband grain readback mismatch"
+      }
+
+      true
+    }.onFailure { error ->
+      Log.e(
+        TAG,
+        "Adaptive Deband profile verification FAILED: profile=$profile",
+        error
+      )
+    }.getOrDefault(false)
   }
 
 /**
