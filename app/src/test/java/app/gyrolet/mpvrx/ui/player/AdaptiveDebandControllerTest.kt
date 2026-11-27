@@ -221,5 +221,26 @@ class AdaptiveDebandControllerTest {
     assertEquals(BandingLevel.HEAVY, controller.currentLevel)
     assertEquals(2, profile!!.iterations)
   }
+  
+  @Test
+  fun `does not emit profile repeatedly while level remains unchanged`() {
+    val controller = AdaptiveDebandController()
+
+    // Confirm transition to HEAVY.
+    assertNull(controller.observe(70))
+    assertNull(controller.observe(70))
+
+    val initialProfile = controller.observe(70)
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+    assertTrue(initialProfile!!.enabled)
+
+    // Further HEAVY samples must not emit the same profile again.
+    repeat(10) {
+      assertNull(controller.observe(70))
+    }
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+  }
 }
 
