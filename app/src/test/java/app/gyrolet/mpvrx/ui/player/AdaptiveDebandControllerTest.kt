@@ -242,5 +242,37 @@ class AdaptiveDebandControllerTest {
 
     assertEquals(BandingLevel.HEAVY, controller.currentLevel)
   }
+  
+  @Test
+  fun `emits profile once after confirmed downward transition`() {
+    val controller = AdaptiveDebandController()
+
+    // First confirm transition to HEAVY.
+    repeat(3) {
+      controller.observe(70)
+    }
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+
+    // Score 54 crosses the downward hysteresis threshold to MEDIUM.
+    assertNull(controller.observe(54))
+    assertNull(controller.observe(54))
+
+    val mediumProfile = controller.observe(54)
+
+    assertEquals(BandingLevel.MEDIUM, controller.currentLevel)
+    assertTrue(mediumProfile!!.enabled)
+    assertEquals(1, mediumProfile.iterations)
+    assertEquals(48, mediumProfile.threshold)
+    assertEquals(16, mediumProfile.range)
+    assertEquals(24, mediumProfile.grain)
+
+    // Stable MEDIUM samples must not emit another profile.
+    repeat(10) {
+      assertNull(controller.observe(54))
+    }
+
+    assertEquals(BandingLevel.MEDIUM, controller.currentLevel)
+  }
 }
 
