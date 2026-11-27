@@ -60,23 +60,23 @@ object AdaptiveDebandProfiles {
     iterations = 1,
     threshold = 48,
     range = 16,
-    grain = 32,
+    grain = 24,
   )
 
   val HEAVY = AdaptiveDebandProfile(
     enabled = true,
     iterations = 2,
     threshold = 64,
-    range = 16,
-    grain = 48,
+    range = 12,
+    grain = 32,
   )
 
   val VERY_HEAVY = AdaptiveDebandProfile(
     enabled = true,
     iterations = 3,
     threshold = 80,
-    range = 16,
-    grain = 64,
+    range = 8,
+    grain = 40,
   )
 
   fun forLevel(level: BandingLevel): AdaptiveDebandProfile =
