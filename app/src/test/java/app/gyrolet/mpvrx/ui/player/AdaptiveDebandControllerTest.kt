@@ -168,5 +168,29 @@ class AdaptiveDebandControllerTest {
     assertEquals(BandingLevel.HEAVY, controller.currentLevel)
     assertEquals(2, profile!!.iterations)
   }
+  
+  @Test
+  fun `clears pending transition when score returns to current level`() {
+    val controller = AdaptiveDebandController()
+
+    // Two samples begin a pending transition to HEAVY.
+    assertNull(controller.observe(70))
+    assertNull(controller.observe(70))
+
+    // Returning to NONE, the current level, must clear the pending state.
+    assertNull(controller.observe(0))
+
+    // Two new HEAVY samples must not confirm the transition.
+    assertNull(controller.observe(70))
+    assertNull(controller.observe(70))
+
+    assertEquals(BandingLevel.NONE, controller.currentLevel)
+
+    // The third consecutive HEAVY sample confirms the transition.
+    val profile = controller.observe(70)
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+    assertEquals(2, profile!!.iterations)
+  }
 }
 
