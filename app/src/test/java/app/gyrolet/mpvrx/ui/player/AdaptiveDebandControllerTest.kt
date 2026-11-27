@@ -192,5 +192,34 @@ class AdaptiveDebandControllerTest {
     assertEquals(BandingLevel.HEAVY, controller.currentLevel)
     assertEquals(2, profile!!.iterations)
   }
+  
+  @Test
+  fun `reset after active profile restores none and clears transition state`() {
+    val controller = AdaptiveDebandController()
+
+    // Confirm transition to HEAVY.
+    repeat(3) {
+      controller.observe(70)
+    }
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+
+    // Reset must restore NONE.
+    controller.reset()
+
+    assertEquals(BandingLevel.NONE, controller.currentLevel)
+
+    // Two HEAVY samples after reset must not be enough.
+    assertNull(controller.observe(70))
+    assertNull(controller.observe(70))
+
+    assertEquals(BandingLevel.NONE, controller.currentLevel)
+
+    // The third consecutive sample confirms HEAVY.
+    val profile = controller.observe(70)
+
+    assertEquals(BandingLevel.HEAVY, controller.currentLevel)
+    assertEquals(2, profile!!.iterations)
+  }
 }
 
