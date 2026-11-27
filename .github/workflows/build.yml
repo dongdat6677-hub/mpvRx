@@ -27,7 +27,7 @@ jobs:
             name: Standard
             gradle: Standard
             dir: standard
-            abis: universal arm64-v8a armeabi-v7a x86 x86_64
+            abis: arm64-v8a
             package: apk
           - id: fongmi
             name: FongMi
@@ -35,29 +35,12 @@ jobs:
             dir: fongmi
             abis: universal
             package: apk
-          - id: no_vulkan
-            name: No Vulkan
-            gradle: NoVulkan
-            dir: noVulkan
-            abis: universal
-            package: apk
-          - id: playstore
-            name: Play Store
-            gradle: Playstore
-            dir: playstore
-            abis: universal
-            package: apk
-          - id: playstore_bundle
-            name: Play Store
-            gradle: Playstore
-            dir: playstore
-            abis: ''
-            package: aab
     env:
       DISTRIBUTION: ${{ matrix.distribution.id }}
       GRADLE_FLAVOR: ${{ matrix.distribution.gradle }}
       APK_DIR: ${{ matrix.distribution.dir }}
       APK_ABIS: ${{ matrix.distribution.abis }}
+      TARGET_ABI: ${{ matrix.distribution.targetAbi }}
 
     steps:
       - name: Checkout repository
@@ -453,6 +436,9 @@ jobs:
           if [[ "$DISTRIBUTION" != "playstore" ]]; then
             extra_args+=(-PexperimentalBuild=true)
           fi
+          if [[ -n "$TARGET_ABI" ]]; then
+            extra_args+=("-PtargetAbi=$TARGET_ABI")
+          fi
           ./gradlew "assemble${GRADLE_FLAVOR}Release" "${extra_args[@]}" --stacktrace --no-daemon --max-workers=2
 
       - name: Build release bundle
@@ -571,13 +557,15 @@ jobs:
           case "$DISTRIBUTION" in
             standard)
               release_dir="app/build/outputs/apk/standard/release"
-              architectures=(universal arm64-v8a armeabi-v7a x86 x86_64)
-              for abi in "${architectures[@]}"; do
-                if ! compgen -G "$release_dir/app-standard-${abi}-release*.apk" >/dev/null; then
-                  echo "No standard release APK found for $abi"
-                  exit 1
-                fi
-              done
+              if ! compgen -G "$release_dir/app-standard-arm64-v8a-release*.apk" >/dev/null; then
+                echo "No Standard ARM64 release APK found"
+                exit 1
+              fi
+              if find "$release_dir" -maxdepth 1 -type f -name "app-standard-*-release*.apk" ! -name "app-standard-arm64-v8a-release.apk" ! -name "app-standard-arm64-v8a-release-unsigned.apk" | grep -q .; then
+                echo "Standard produced an unexpected APK variant"
+                find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
+                exit 1
+              fi
               ;;
             fongmi)
               release_dir="app/build/outputs/apk/fongmi/release"
@@ -587,30 +575,6 @@ jobs:
               fi
               if find "$release_dir" -maxdepth 1 -type f -name "app-fongmi-*-release*.apk" ! -name "app-fongmi-universal-release*.apk" | grep -q .; then
                 echo "fongmi produced an unexpected ABI-specific APK"
-                find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
-                exit 1
-              fi
-              ;;
-            no_vulkan)
-              release_dir="app/build/outputs/apk/noVulkan/release"
-              if ! compgen -G "$release_dir/app-noVulkan-universal-release*.apk" >/dev/null; then
-                echo "No universal non-Vulkan release APK found"
-                exit 1
-              fi
-              if find "$release_dir" -maxdepth 1 -type f -name "app-noVulkan-*-release*.apk" ! -name "app-noVulkan-universal-release*.apk" | grep -q .; then
-                echo "The non-Vulkan flavor produced an unexpected ABI-specific APK"
-                find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
-                exit 1
-              fi
-              ;;
-            playstore)
-              release_dir="app/build/outputs/apk/playstore/release"
-              if ! compgen -G "$release_dir/app-playstore-universal-release*.apk" >/dev/null; then
-                echo "No universal Play Store release APK found"
-                exit 1
-              fi
-              if find "$release_dir" -maxdepth 1 -type f -name "app-playstore-*-release*.apk" ! -name "app-playstore-universal-release*.apk" | grep -q .; then
-                echo "The Play Store flavor produced an unexpected ABI-specific APK"
                 find "$release_dir" -maxdepth 1 -type f -name '*.apk' -print
                 exit 1
               fi
