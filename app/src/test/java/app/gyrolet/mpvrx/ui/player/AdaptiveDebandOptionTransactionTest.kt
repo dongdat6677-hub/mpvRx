@@ -84,4 +84,54 @@ class AdaptiveDebandOptionTransactionTest {
     // The failed restoration must not be mistaken for a successful rollback.
     assertEquals("yes", options["deband"])
   }
+  
+  @Test
+  fun `rolls back when write succeeds but readback does not match`() {
+    val options = initialOptions()
+
+    val result = AdaptiveDebandOptionTransaction.apply(
+      updates = updates,
+      readOption = { name -> options[name] },
+      writeOption = { name, value ->
+        if (name == "deband-range" && value == "16") {
+          // Simulate a successful write call with an unchanged value.
+          true
+        } else {
+          options[name] = value
+          true
+        }
+      },
+    )
+
+    assertEquals(
+      AdaptiveDebandTransactionResult.ROLLED_BACK,
+      result,
+    )
+    assertEquals(initialOptions(), options)
+  }
+
+  @Test
+  fun `does not write options when snapshot fails`() {
+    val options = initialOptions()
+    var writeAttempts = 0
+
+    val result = AdaptiveDebandOptionTransaction.apply(
+      updates = updates,
+      readOption = { name ->
+        if (name == "deband-range") null else options[name]
+      },
+      writeOption = { name, value ->
+        writeAttempts++
+        options[name] = value
+        true
+      },
+    )
+
+    assertEquals(
+      AdaptiveDebandTransactionResult.SNAPSHOT_FAILED,
+      result,
+    )
+    assertEquals(0, writeAttempts)
+    assertEquals(initialOptions(), options)
+  }
 }
