@@ -121,4 +121,38 @@ class AdaptiveDebandProfileTest {
     assertEquals(AdaptiveDebandProfiles.VERY_HEAVY, AdaptiveDebandProfiles.fromScore(80))
     assertEquals(AdaptiveDebandProfiles.VERY_HEAVY, AdaptiveDebandProfiles.fromScore(100))
   }
+  
+  @Test
+  fun `maintains progressive deband profile strength`() {
+    val light = AdaptiveDebandProfiles.LIGHT
+    val medium = AdaptiveDebandProfiles.MEDIUM
+    val heavy = AdaptiveDebandProfiles.HEAVY
+    val veryHeavy = AdaptiveDebandProfiles.VERY_HEAVY
+
+    // Deband remains enabled for every non-NONE profile.
+    assertTrue(light.enabled)
+    assertTrue(medium.enabled)
+    assertTrue(heavy.enabled)
+    assertTrue(veryHeavy.enabled)
+
+    // Threshold increases with each severity level.
+    assertTrue(light.threshold < medium.threshold)
+    assertTrue(medium.threshold < heavy.threshold)
+    assertTrue(heavy.threshold < veryHeavy.threshold)
+
+    // Iterations increase for stronger banding.
+    assertTrue(light.iterations <= medium.iterations)
+    assertTrue(medium.iterations < heavy.iterations)
+    assertTrue(heavy.iterations < veryHeavy.iterations)
+
+    // Grain increases progressively without excessive jumps.
+    assertTrue(light.grain < medium.grain)
+    assertTrue(medium.grain < heavy.grain)
+    assertTrue(heavy.grain < veryHeavy.grain)
+
+    // Range is reduced as iteration count increases.
+    assertEquals(light.range, medium.range)
+    assertTrue(medium.range > heavy.range)
+    assertTrue(heavy.range > veryHeavy.range)
+  }
 }
