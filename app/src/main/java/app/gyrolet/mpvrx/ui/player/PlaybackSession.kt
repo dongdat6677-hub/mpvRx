@@ -1736,6 +1736,7 @@ internal fun observeAdaptiveBandingScore(
     )
 
     true
+  }
 
   fun observeProperty(
     property: String,
