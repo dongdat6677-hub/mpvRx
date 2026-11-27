@@ -1,87 +1,72 @@
+
 package app.gyrolet.mpvrx.ui.player
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
-
-class AdaptiveDebandOptionTransactionTest {
-
-  private val updates = listOf(
-    "deband" to "yes",
-    "deband-iterations" to "1",
-    "deband-threshold" to "32",
-    "deband-range" to "16",
-    "deband-grain" to "16",
-  )
-
-  private fun initialOptions() = mutableMapOf(
-    "deband" to "no",
-    "deband-iterations" to "2",
-    "deband-threshold" to "48",
-    "deband-range" to "12",
-    "deband-grain" to "32",
-  )
-
-  @Test
-  fun `restores all previous options after partial application failure`() {
-    val options = initialOptions()
-    var failureTriggered = false
-
-    val result = AdaptiveDebandOptionTransaction.apply(
-      updates = updates,
-      readOption = { name -> options[name] },
-      writeOption = { name, value ->
-        if (name == "deband-range" && value == "16" && !failureTriggered) {
-          failureTriggered = true
-          false
-        } else {
-          options[name] = value
-          true
-        }
-      },
-    )
-
-    assertEquals(
-      AdaptiveDebandTransactionResult.ROLLED_BACK,
-      result,
-    )
-    assertEquals(initialOptions(), options)
-  }
-
-  @Test
-  fun `reports rollback failure when a previous option cannot be restored`() {
-    val options = initialOptions()
-    var applicationFailureTriggered = false
-
-    val result = AdaptiveDebandOptionTransaction.apply(
-      updates = updates,
-      readOption = { name -> options[name] },
-      writeOption = { name, value ->
-        if (
-          name == "deband-range" &&
-          value == "16" &&
-          !applicationFailureTriggered
-        ) {
-          applicationFailureTriggered = true
-          false
-        } else if (
-          name == "deband" &&
-          value == "no"
-        ) {
-          false
-        } else {
-          options[name] = value
-          true
-        }
-      },
-    )
-
-    assertEquals(
-      AdaptiveDebandTransactionResult.ROLLBACK_FAILED,
-      result,
-    )
-
-    // The failed restoration must not be mistaken for a successful rollback.
-    assertEquals("yes", options["deband"])
-  }
+internal enum class AdaptiveDebandTransactionResult {
+  APPLIED,
+  ROLLED_BACK,
+  ROLLBACK_FAILED,
+  SNAPSHOT_FAILED,
 }
 
+/**
+ * Applies a group of mpv options and restores their previous values
+ * if any write or readback verification fails.
+ */
+internal object AdaptiveDebandOptionTransaction {
+
+  fun apply(
+    updates: List<Pair<String, String>>,
+    readOption: (String) -> String?,
+    writeOption: (String, String) -> Boolean,
+  ): AdaptiveDebandTransactionResult {
+    val previousValues = runCatching {
+      updates.associate { (name, _) ->
+        name to requireNotNull(readOption(name)) {
+          "Unable to snapshot mpv option: $name"
+        }
+      }
+    }.getOrNull() ?: return AdaptiveDebandTransactionResult.SNAPSHOT_FAILED
+
+    val applied = runCatching {
+      updates.forEach { (name, value) ->
+        check(writeOption(name, value)) {
+          "Failed to write mpv option: $name=$value"
+        }
+      }
+
+      check(
+        updates.all { (name, value) ->
+          readOption(name) == value
+        }
+      ) {
+        "mpv option readback verification failed"
+      }
+    }.isSuccess
+
+    if (applied) {
+      return AdaptiveDebandTransactionResult.APPLIED
+    }
+
+    val rollbackSucceeded = runCatching {
+      previousValues.forEach { (name, value) ->
+        check(writeOption(name, value)) {
+          "Failed to restore mpv option: $name=$value"
+        }
+      }
+
+      check(
+        previousValues.all { (name, value) ->
+          readOption(name) == value
+        }
+      ) {
+        "mpv option rollback verification failed"
+      }
+    }.isSuccess
+
+    return if (rollbackSucceeded) {
+      AdaptiveDebandTransactionResult.ROLLED_BACK
+    } else {
+      AdaptiveDebandTransactionResult.ROLLBACK_FAILED
+    }
+  }
+}
