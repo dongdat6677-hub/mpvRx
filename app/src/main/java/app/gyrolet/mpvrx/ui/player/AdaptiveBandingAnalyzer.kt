@@ -159,7 +159,7 @@ internal object AdaptiveBandingAnalyzer {
 
     val total = horizontalTotal + verticalTotal
 
-    if (total == 0) return 0
+    if (total == 0) return null
 
     val candidates = horizontalSupported + verticalSupported
     val score = (candidates * 100 / total).coerceIn(0, 100)
