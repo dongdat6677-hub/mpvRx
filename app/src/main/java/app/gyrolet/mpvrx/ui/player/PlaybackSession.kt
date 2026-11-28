@@ -1558,41 +1558,41 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
             expectedGeneration
           )
 
-          if (sample != null) {
-            val score = AdaptiveBandingAnalyzer.analyze(sample)
+        if (sample != null) {
+          val analysis = AdaptiveBandingAnalyzer.analyzeDetailed(sample)
 
-            if (score != null) {
-              Log.d(
-                TAG,
-                "Adaptive Deband sample analyzed: " +
-                  "generation=$expectedGeneration, " +
-                  "bytes=${sample.size}, score=$score"
-              )
+        if (analysis != null) {
+          val score = analysis.score
 
-              val accepted = observeAdaptiveBandingScore(
-                expectedGeneration,
-                score
-              )
+          Log.d(
+          TAG,
+         "Adaptive Deband diagnostic: " +
+         "generation=$expectedGeneration, " +
+         "bytes=${sample.size}, " +
+         "size=${analysis.width}x${analysis.height}, " +
+         "horizontal=${analysis.horizontalSupported}/${analysis.horizontalCandidates}/${analysis.horizontalTotal}, " +
+         "vertical=${analysis.verticalSupported}/${analysis.verticalCandidates}/${analysis.verticalTotal}, " +
+         "score=$score"
+         )
 
-              Log.d(
-                TAG,
-                "Adaptive Deband score submitted: " +
-                  "generation=$expectedGeneration, " +
-                  "score=$score, accepted=$accepted"
-              )
-            } else {
-              Log.w(
-                TAG,
-                "Adaptive Deband analyzer rejected frame sample"
-              )
-            }
-          }
-        }
-
-        delay(1_000L)
-      }
+          val accepted = observeAdaptiveBandingScore(
+              expectedGeneration,
+              score
+         )
+  
+         Log.d(
+         TAG,
+         "Adaptive Deband score submitted: " +
+         "generation=$expectedGeneration, " +
+         "score=$score, accepted=$accepted"
+         )
+         } else {
+         Log.w(
+         TAG,
+        "Adaptive Deband analyzer rejected frame sample"
+      )
     }
-  }
+ }
   
 internal fun applyAdaptiveDebandProfile(
   profile: AdaptiveDebandProfile,
