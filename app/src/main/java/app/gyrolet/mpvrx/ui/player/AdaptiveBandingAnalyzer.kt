@@ -1,6 +1,17 @@
 
 package app.gyrolet.mpvrx.ui.player
 
+internal data class AdaptiveBandingAnalysisResult(
+  val score: Int,
+  val width: Int,
+  val height: Int,
+  val horizontalTotal: Int,
+  val verticalTotal: Int,
+  val horizontalCandidates: Int,
+  val verticalCandidates: Int,
+  val horizontalSupported: Int,
+  val verticalSupported: Int,
+)
 /**
  * Estimates visible gradient banding from a compact RGB24 frame sample.
  *
@@ -25,7 +36,13 @@ internal object AdaptiveBandingAnalyzer {
   private const val BLUE_OFFSET = 2
 
  
-  fun analyze(sample: ByteArray?): Int? {
+  fun analyze(sample: ByteArray?): Int? =
+  analyzeDetailed(sample)?.score
+
+  fun analyzeDetailed(
+  sample: ByteArray?,
+  ): AdaptiveBandingAnalysisResult? {
+  
     if (sample == null || sample.size < HEADER_SIZE) return null
 
     val width =
@@ -128,14 +145,37 @@ internal object AdaptiveBandingAnalyzer {
       verticalWindows,
     )
 
+    val horizontalCandidates = countCandidateWindows(
+      horizontalSignatures,
+      height,
+      horizontalWindows,
+    )
+
+    val verticalCandidates = countCandidateWindows(
+      verticalSignatures,
+      width,
+      verticalWindows,
+    )
+
     val total = horizontalTotal + verticalTotal
 
     if (total == 0) return 0
 
     val candidates = horizontalSupported + verticalSupported
+    val score = (candidates * 100 / total).coerceIn(0, 100)
 
-    return (candidates * 100 / total).coerceIn(0, 100)
-  }
+    return AdaptiveBandingAnalysisResult(
+      score = score,
+      width = width,
+      height = height,
+      horizontalTotal = horizontalTotal,
+      verticalTotal = verticalTotal,
+      horizontalCandidates = horizontalCandidates,
+      verticalCandidates = verticalCandidates,
+      horizontalSupported = horizontalSupported,
+      verticalSupported = verticalSupported,
+      )
+    }
 
 private fun countSpatiallySupported(
   signatures: IntArray,
@@ -202,6 +242,34 @@ private fun countSpatiallySupported(
   }
 
   return supported
+}
+
+private fun countCandidateWindows(
+  signatures: IntArray,
+  lineCount: Int,
+  windowsPerLine: Int,
+): Int {
+  var count = 0
+
+  for (line in 0 until lineCount) {
+    for (window in 0 until windowsPerLine) {
+      val index =
+        (line * windowsPerLine + window) * CHANNEL_COUNT
+
+      var found = false
+
+      for (channel in 0 until CHANNEL_COUNT) {
+        if (signatures[index + channel] != 0) {
+          found = true
+          break
+        }
+      }
+
+      if (found) count++
+    }
+  }
+
+  return count
 }
 
 private fun areSignaturesSimilar(
