@@ -1598,6 +1598,7 @@ internal fun userScriptsNeedReload(currentKey: String): Boolean {
         delay(1_000L)
       }
     }
+  }
   
 internal fun applyAdaptiveDebandProfile(
   profile: AdaptiveDebandProfile,
